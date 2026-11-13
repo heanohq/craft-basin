@@ -29,8 +29,9 @@ class Exports extends Component
     /** Exports with up to this many rows are built in the request. */
     public const SYNC_MAX_ROWS = 1000;
 
-    /** A safety limit: 500 pages of 100. */
+    /** A safety limit: 500 pages of 100. Exports stop here and say so. */
     public const MAX_PAGES = 500;
+    public const MAX_ROWS = self::MAX_PAGES * 100;
 
     /** How long a finished export is kept. */
     public const TTL = 86400;
@@ -40,10 +41,10 @@ class Exports extends Component
      *
      * @param resource $out
      * @param callable(int $done, ?int $total): void|null $progress
-     * @return int Rows written
+     * @return array{rows: int, total: ?int, truncated: bool} Rows written, how many matched, and whether the row limit was hit
      * @throws ApiException
      */
-    public function build(BasinForm $form, array $criteria, bool $technical, $out, ?callable $progress = null): int
+    public function build(BasinForm $form, array $criteria, bool $technical, $out, ?callable $progress = null): array
     {
         $csv = new CsvExport(
             new DateTimeZone($form->getPhpTimezone()),
@@ -55,8 +56,11 @@ class Exports extends Component
         $client = Plugin::getInstance()->getApi()->getClient();
         $apiCriteria = Submissions::apiCriteria($form, $criteria);
         $previousIds = null;
+        $total = null;
+        $truncated = false;
         for ($page = 1; $page <= self::MAX_PAGES; $page++) {
             $result = $client->listSubmissions($apiCriteria, $page);
+            $total ??= $result->total;
             $ids = array_column($result->items, 'id');
             if (!$ids || $ids === $previousIds) {
                 break;
@@ -73,11 +77,14 @@ class Exports extends Component
             if (!$result->hasMore()) {
                 break;
             }
+            if ($page === self::MAX_PAGES) {
+                $truncated = true;
+            }
             $previousIds = $ids;
         }
 
         $csv->writeTo($out);
-        return $csv->count();
+        return ['rows' => $csv->count(), 'total' => $total, 'truncated' => $truncated];
     }
 
     /**
@@ -97,6 +104,8 @@ class Exports extends Component
             'status' => 'pending',
             'progress' => 0,
             'rows' => null,
+            'total' => null,
+            'truncated' => false,
             'error' => null,
             'created' => time(),
         ]);
@@ -120,7 +129,7 @@ class Exports extends Component
             $form = Plugin::getInstance()->getForms()->getFormByUuid($meta['formUuid'])
                 ?? throw new \RuntimeException('The form is no longer in the linked Basin project.');
             $out = fopen($this->path($token, 'csv'), 'wb');
-            $rows = $this->build($form, $criteria, $technical, $out, function(int $done, ?int $total) use ($token, $progress) {
+            $built = $this->build($form, $criteria, $technical, $out, function(int $done, ?int $total) use ($token, $progress) {
                 $fraction = $total ? min(1, $done / $total) : 0;
                 $this->updateMeta($token, ['progress' => $fraction]);
                 if ($progress) {
@@ -128,7 +137,7 @@ class Exports extends Component
                 }
             });
             fclose($out);
-            $this->updateMeta($token, ['status' => 'ready', 'progress' => 1, 'rows' => $rows]);
+            $this->updateMeta($token, ['status' => 'ready', 'progress' => 1] + $built);
         } catch (Throwable $e) {
             Craft::warning("Basin export $token failed: " . $e->getMessage(), 'basin');
             @unlink($this->path($token, 'csv'));

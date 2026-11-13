@@ -95,6 +95,40 @@
         {% endif %}
     {% endif %}
 
+    {% if form.captcha == 'recaptcha' %}
+        <hr>
+
+        <h2>{{ 'reCAPTCHA version'|t('basin') }}</h2>
+        {% set siteDefault = settings.recaptchaVersion %}
+        {% set versionOptions = [
+            { label: 'Site default ({version})'|t('basin', { version: siteDefault }), value: '' },
+            { label: 'v3 (invisible)'|t('basin'), value: 'v3' },
+            { label: 'v2 (checkbox)'|t('basin'), value: 'v2' },
+        ] %}
+        {% if canEditRecaptcha %}
+            <form method="post" accept-charset="UTF-8">
+                {{ csrfInput() }}
+                {{ actionInput('basin/forms/save-recaptcha-version') }}
+                {{ redirectInput(form.cpUrl) }}
+                {{ hiddenInput('formUuid', form.uuid) }}
+                {{ forms.selectField({
+                    label: 'Version for this form'|t('basin'),
+                    instructions: 'Basin accepts either version. Templates can still choose one for a single form tag with `data-basin-recaptcha="v2"`.'|t('basin'),
+                    id: 'basin-recaptcha-version',
+                    name: 'recaptchaVersion',
+                    options: versionOptions,
+                    value: form.recaptchaVersion ?? '',
+                }) }}
+                <button type="submit" class="btn">{{ 'Save'|t('app') }}</button>
+            </form>
+        {% else %}
+            <p>{{ form.recaptchaVersion ? form.recaptchaVersion : 'Site default ({version})'|t('basin', { version: siteDefault }) }}</p>
+            {% if currentUser.admin %}
+                <p class="light">{{ 'This is saved in project config, so it can only be changed where admin changes are allowed.'|t('basin') }}</p>
+            {% endif %}
+        {% endif %}
+    {% endif %}
+
     <hr>
 
     <h2>{{ 'Template code'|t('basin') }}</h2>

@@ -34,6 +34,13 @@
                         <li><button type="button" class="menu-item" data-basin-export-technical="0">{{ 'Export CSV'|t('basin') }}</button></li>
                         <li><button type="button" class="menu-item" data-basin-export-technical="1">{{ 'Export CSV with IP address, browser and referrer'|t('basin') }}</button></li>
                     </ul>
+                    <p class="light smalltext" style="padding: var(--xs) var(--m) var(--s); margin: 0; max-width: 22em;">
+                        {%- if result.total ?? null -%}
+                            {{ 'Exports all {count, plural, =1{1 submission} other{# submissions}} matching the current tab, search and dates, not just this page.'|t('basin', { count: result.total }) }}
+                        {%- else -%}
+                            {{ 'Exports every submission matching the current tab, search and dates, not just this page.'|t('basin') }}
+                        {%- endif -%}
+                    </p>
                 </div>
                 {% js %}
                     // The menu may be moved out of the form, so submit it from here.
@@ -60,6 +67,8 @@
                 <span>
                     {% if export.status == 'pending' %}
                         {{ 'Your export is being prepared ({percent}%).'|t('basin', { percent: (export.progress * 100)|round }) }}
+                    {% elseif export.status == 'ready' and (export.truncated ?? false) %}
+                        {{ 'Your export is ready, but it has only the newest {count, number} of {total, number} submissions, the most one export can hold. Narrow the date range and export again for the rest.'|t('basin', { count: export.rows, total: export.total }) }}
                     {% elseif export.status == 'ready' %}
                         {{ 'Your export of {count, plural, =1{1 submission} other{# submissions}} is ready.'|t('basin', { count: export.rows }) }}
                         <span class="light">{{ 'It’s deleted once downloaded, or after 24 hours.'|t('basin') }}</span>

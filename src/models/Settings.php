@@ -49,6 +49,9 @@ class Settings extends Model
     public string $recaptchaV2SiteKey = '6Lew3SMUAAAAAJ82QoS7gqOTkRI_dhYrFy1f7Sqy';
     public string $hcaptchaSiteKey = '7fe715a1-151f-4c63-b497-bd971974df05';
 
+    /** Whether to show the unread count on the CP nav item (spec §15). */
+    public bool $showUnreadBadge = true;
+
     /** Custom label for the main CP nav item. Blank = "Basin". */
     public string $navLabel = '';
 
@@ -60,6 +63,14 @@ class Settings extends Model
      */
     public array $studioForms = [];
 
+    /**
+     * Per-form reCAPTCHA versions, keyed by form UUID, overriding
+     * `recaptchaVersion`. Saved from the form's CP page.
+     *
+     * @var array<string, 'v2'|'v3'>
+     */
+    public array $recaptchaVersions = [];
+
     protected function defineRules(): array
     {
         return [
@@ -69,10 +80,11 @@ class Settings extends Model
             ['projectId', 'validateProjectId'],
             ['navLabel', 'string', 'max' => 60],
             ['cacheDuration', 'integer', 'min' => 0],
-            [['allowDeletion', 'trackMissingForms', 'autoProtect'], 'boolean'],
+            [['allowDeletion', 'trackMissingForms', 'autoProtect', 'showUnreadBadge'], 'boolean'],
             ['recaptchaVersion', 'in', 'range' => ['v3', 'v2']],
             [['recaptchaV3SiteKey', 'recaptchaV2SiteKey', 'hcaptchaSiteKey'], 'match', 'pattern' => '/^[A-Za-z0-9_\-]{10,100}$/'],
             ['studioForms', 'validateStudioForms'],
+            ['recaptchaVersions', 'validateRecaptchaVersions'],
         ];
     }
 
@@ -85,6 +97,23 @@ class Settings extends Model
                 return;
             }
         }
+    }
+
+    public function validateRecaptchaVersions(string $attribute): void
+    {
+        foreach ($this->$attribute as $uuid => $version) {
+            if (!StudioEmbed::isValidHostedId((string)$uuid) || !in_array($version, ['v2', 'v3'], true)) {
+                $this->addError($attribute, Craft::t('basin', 'Invalid reCAPTCHA version settings.'));
+                return;
+            }
+        }
+    }
+
+    /** A form's own reCAPTCHA version, or null to use the site default. */
+    public function getFormRecaptchaVersion(string $uuid): ?string
+    {
+        $version = $this->recaptchaVersions[$uuid] ?? null;
+        return in_array($version, ['v2', 'v3'], true) ? $version : null;
     }
 
     public function getHostedFormId(string $uuid): ?string

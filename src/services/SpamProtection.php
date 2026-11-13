@@ -37,7 +37,7 @@ class SpamProtection extends Component
     {
         $settings = Plugin::getInstance()->getSettings();
         $captcha = $form->getCaptcha();
-        $version = $captcha === 'recaptcha' ? $settings->recaptchaVersion : null;
+        $version = $captcha === 'recaptcha' ? ($form->recaptchaVersion ?? $settings->recaptchaVersion) : null;
 
         $siteKey = match ($captcha) {
             'recaptcha' => $version === 'v2' ? $settings->recaptchaV2SiteKey : $settings->recaptchaV3SiteKey,
@@ -87,6 +87,12 @@ class SpamProtection extends Component
     {
         if ($form->getCaptcha() === null) {
             return '';
+        }
+        // `version` picks reCAPTCHA v2 or v3 for this placement.
+        $version = $attributes['version'] ?? null;
+        unset($attributes['version']);
+        if ($form->getCaptcha() === 'recaptcha' && in_array($version, ['v2', 'v3'], true)) {
+            $attributes['data-basin-recaptcha'] = $version;
         }
         return Html::tag('div', '', array_merge($attributes, [
             'data-basin-captcha' => $form->uuid,
@@ -156,7 +162,13 @@ class SpamProtection extends Component
         }
 
         $nonce = PageScanner::nonce($html);
-        $json = json_encode(['auto' => $settings->autoProtect, 'forms' => $configs, 'nonce' => $nonce], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES);
+        $json = json_encode([
+            'auto' => $settings->autoProtect,
+            'forms' => $configs,
+            // Both reCAPTCHA keys, so templates can pick a version per form tag.
+            'recaptchaKeys' => ['v2' => $settings->recaptchaV2SiteKey, 'v3' => $settings->recaptchaV3SiteKey],
+            'nonce' => $nonce,
+        ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES);
         $script = Html::tag('script', "window.BasinProtect=$json;\n" . self::script(), array_filter([
             'nonce' => $nonce,
             'data-basin-protect-script' => true,

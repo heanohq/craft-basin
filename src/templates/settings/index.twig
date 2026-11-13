@@ -91,6 +91,16 @@
     }) }}
 
     {{ forms.lightswitchField({
+        label: 'Show unread count'|t('basin'),
+        instructions: 'Shows the number of unread submissions next to the menu item, for users who can view submissions.'|t('basin'),
+        id: 'basin-showUnreadBadge',
+        name: 'settings[showUnreadBadge]',
+        on: _self.value('showUnreadBadge', settings, overrides, plugin)|trim == '1',
+        warning: _self.overrideWarning('showUnreadBadge', overrides),
+        disabled: readOnly or 'showUnreadBadge' in overrides,
+    }) }}
+
+    {{ forms.lightswitchField({
         label: 'Allow permanent deletion of submissions'|t('basin'),
         instructions: 'When off, submissions can only be moved to trash. When on, users with the “Delete submissions” permission can permanently delete them from Basin. Deletion can’t be undone.'|t('basin'),
         id: 'basin-allowDeletion',

@@ -104,6 +104,7 @@ class Forms extends Component
                 continue;
             }
             $form = BasinForm::fromApi($row, $settings->getHostedFormId((string)$row['uuid']));
+            $form->recaptchaVersion = $settings->getFormRecaptchaVersion($form->uuid);
             $form->detectedHostedId = $this->getDetectedHostedId($form->uuid);
             $forms[$form->uuid] = $form;
         }
@@ -173,6 +174,25 @@ class Forms extends Component
      */
     public function saveHostedFormId(string $uuid, ?string $hostedId): void
     {
+        $this->saveFormSetting('studioForms', $uuid, $hostedId);
+        if ($hostedId !== null) {
+            Plugin::getInstance()->getFormIssues()->clear($uuid, FormIssues::REASON_NO_EMBED);
+        }
+    }
+
+    /**
+     * Saves (or with null, removes) a form's own reCAPTCHA version.
+     */
+    public function saveRecaptchaVersion(string $uuid, ?string $version): void
+    {
+        $this->saveFormSetting('recaptchaVersions', $uuid, $version);
+    }
+
+    /**
+     * Sets one form's entry in a per-form settings map, in project config.
+     */
+    private function saveFormSetting(string $setting, string $uuid, ?string $value): void
+    {
         $plugin = Plugin::getInstance();
 
         // Go through savePluginSettings (like the settings screen) so Craft
@@ -181,20 +201,17 @@ class Forms extends Component
         $stored = ProjectConfigHelper::unpackAssociativeArrays(
             (array)(Craft::$app->getProjectConfig()->get("plugins.$plugin->handle.settings") ?? [])
         );
-        $studioForms = (array)($stored['studioForms'] ?? []);
-        if ($hostedId === null) {
-            unset($studioForms[$uuid]);
+        $map = (array)($stored[$setting] ?? []);
+        if ($value === null) {
+            unset($map[$uuid]);
         } else {
-            $studioForms[$uuid] = $hostedId;
+            $map[$uuid] = $value;
         }
-        $stored['studioForms'] = $studioForms;
+        $stored[$setting] = $map;
 
         Craft::$app->getPlugins()->savePluginSettings($plugin, $stored);
-        $plugin->getSettings()->studioForms = $studioForms;
+        $plugin->getSettings()->$setting = $map;
         $this->forms = null;
-        if ($hostedId !== null) {
-            $plugin->getFormIssues()->clear($uuid, FormIssues::REASON_NO_EMBED);
-        }
     }
 
     /**

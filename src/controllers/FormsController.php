@@ -73,6 +73,7 @@ class FormsController extends BaseCpController
             'studioStatus' => $studioStatus,
             'embedInput' => $embedInput,
             'canEditStudio' => $this->canEditStudio(),
+            'canEditRecaptcha' => $this->canEditSetting('recaptchaVersions'),
             'staleSince' => $plugin->getForms()->getStaleSince(),
         ]);
     }
@@ -127,11 +128,36 @@ class FormsController extends BaseCpController
         return $this->asSuccess(Craft::t('basin', 'Embed code removed.'));
     }
 
+    public function actionSaveRecaptchaVersion(): ?Response
+    {
+        $this->requirePostRequest();
+        $this->requireAdmin();
+
+        $form = $this->requireForm((string)$this->request->getRequiredBodyParam('formUuid'));
+        if (!$this->canEditSetting('recaptchaVersions')) {
+            return $this->asFailure(Craft::t('basin', 'reCAPTCHA versions are being set in `config/basin.php`.'));
+        }
+
+        $version = $this->request->getBodyParam('recaptchaVersion');
+        $version = in_array($version, ['v2', 'v3'], true) ? $version : null;
+        Plugin::getInstance()->getForms()->saveRecaptchaVersion($form->uuid, $version);
+
+        return $this->asSuccess(Craft::t('basin', 'reCAPTCHA version saved.'));
+    }
+
     private function canEditStudio(): bool
+    {
+        return $this->canEditSetting('studioForms');
+    }
+
+    /**
+     * Whether the current user can change a per-form setting stored in project config.
+     */
+    private function canEditSetting(string $setting): bool
     {
         return Craft::$app->getUser()->getIsAdmin()
             && Craft::$app->getConfig()->getGeneral()->allowAdminChanges
-            && !in_array('studioForms', Plugin::getInstance()->getConfigOverrides(), true);
+            && !in_array($setting, Plugin::getInstance()->getConfigOverrides(), true);
     }
 
     /**

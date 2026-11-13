@@ -148,10 +148,12 @@ class Plugin extends BasePlugin
         if (Craft::$app->getUser()->checkPermission('basin-viewSubmissions')) {
             $subNav['submissions'] = ['label' => Craft::t('basin', 'Submissions'), 'url' => 'basin/submissions'];
             // Unread count (spec §15). Never lets Basin break the CP nav.
-            try {
-                $unread = $this->getSubmissions()->getUnreadCount();
-            } catch (Throwable) {
-                $unread = null;
+            $unread = null;
+            if ($this->getSettings()->showUnreadBadge) {
+                try {
+                    $unread = $this->getSubmissions()->getUnreadCount();
+                } catch (Throwable) {
+                }
             }
             if ($unread) {
                 $item['badgeCount'] = $unread;

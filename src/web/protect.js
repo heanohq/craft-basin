@@ -8,10 +8,18 @@
   const FORM_SELECTOR = 'form[action*="usebasin.com/f/"]';
   const EXISTING_CAPTCHA = '.g-recaptcha, .h-captcha, .cf-turnstile, [name="g-recaptcha-response"], [name="h-captcha-response"], [name="cf-turnstile-response"]';
 
+  const RECAPTCHA_SCRIPT = 'https://www.google.com/recaptcha/api.js';
+  const keys = config.recaptchaKeys || {};
+
   const handled = new WeakSet();
   const loaded = {};
-  const waiting = { recaptcha: [], hcaptcha: [], turnstile: [] };
-  const ready = { recaptcha: false, hcaptcha: false, turnstile: false };
+  const waiting = { hcaptcha: [], turnstile: [] };
+  const ready = { hcaptcha: false, turnstile: false };
+
+  // Google's script is loaded once for every reCAPTCHA form on the page. With
+  // a v3 form it's loaded with the v3 key, and v2 widgets are rendered from
+  // that same script.
+  const recaptcha = { loading: null, ready: false, needV3: false, widgets: [] };
 
   const uuidOf = (form) => {
     const match = (form.getAttribute('action') || '').match(/usebasin\.com\/f\/([A-Za-z0-9]+)/);
@@ -45,6 +53,28 @@
     api.render(el, { sitekey: siteKey });
   };
 
+  const loadRecaptcha = () => {
+    if (!recaptcha.needV3 && !recaptcha.widgets.length) return;
+    if (recaptcha.loading) {
+      if (recaptcha.needV3 && recaptcha.loading !== 'v3') {
+        console.warn('Basin: a reCAPTCHA v3 form was added after reCAPTCHA loaded for v2 only, so it can’t get a token.');
+      }
+      return;
+    }
+    recaptcha.loading = recaptcha.needV3 ? 'v3' : 'explicit';
+    window.basinOnLoad_recaptcha = () => {
+      recaptcha.ready = true;
+      recaptcha.widgets.splice(0).forEach(([el, key]) => renderWidget('recaptcha', el, key));
+    };
+    const render = recaptcha.needV3 ? encodeURIComponent(keys.v3) : 'explicit';
+    loadScript(`${RECAPTCHA_SCRIPT}?render=${render}&onload=basinOnLoad_recaptcha`);
+  };
+
+  const queueRecaptchaV2 = (el, siteKey) => {
+    if (recaptcha.ready) renderWidget('recaptcha', el, siteKey);
+    else recaptcha.widgets.push([el, siteKey]);
+  };
+
   const queueWidget = (type, el, siteKey, scriptUrl) => {
     if (ready[type]) {
       renderWidget(type, el, siteKey);
@@ -62,15 +92,15 @@
   // reCAPTCHA v3, as in Basin's docs: get a token when the form is submitted,
   // then submit again with it. Re-submitting with requestSubmit() means any
   // other submit handlers (e.g. AJAX) run with the token in place.
-  const setUpRecaptchaV3 = (form, container, settings) => {
-    loadScript(settings.scriptUrl);
+  const setUpRecaptchaV3 = (form, container, siteKey) => {
+    recaptcha.needV3 = true;
     const input = hidden(form, container, 'g-recaptcha-response');
     hidden(form, container, 'g-recaptcha-version', 'v3');
     let passing = false;
 
     const getToken = () => new Promise((resolve, reject) => {
       const run = () => window.grecaptcha.ready(() => {
-        window.grecaptcha.execute(settings.siteKey, { action: 'submit' }).then((token) => {
+        window.grecaptcha.execute(siteKey, { action: 'submit' }).then((token) => {
           input.value = token;
           resolve();
         }, reject);
@@ -104,19 +134,29 @@
     }, true);
   };
 
+  // A template can pick the reCAPTCHA version with data-basin-recaptcha on
+  // the placeholder or the <form>; otherwise the form's own setting is used.
+  const recaptchaVersion = (form, container, settings) => {
+    const chosen = container.getAttribute('data-basin-recaptcha') || form.getAttribute('data-basin-recaptcha');
+    return chosen === 'v2' || chosen === 'v3' ? chosen : (settings.recaptchaVersion || 'v3');
+  };
+
   const addCaptcha = (form, container, settings) => {
-    if (settings.captcha === 'recaptcha' && settings.recaptchaVersion === 'v3') {
-      setUpRecaptchaV3(form, container, settings);
+    const version = settings.captcha === 'recaptcha' ? recaptchaVersion(form, container, settings) : null;
+    const siteKey = version ? (keys[version] || settings.siteKey) : settings.siteKey;
+    if (version === 'v3') {
+      setUpRecaptchaV3(form, container, siteKey);
       return;
     }
-    if (!settings.siteKey) {
+    if (!siteKey) {
       console.warn(`Basin: this form requires ${settings.captcha}, but no site key is set for it in Basin, so submissions will fail.`, form);
       return;
     }
     const el = document.createElement('div');
     el.className = 'basin-captcha';
     container.appendChild(el);
-    queueWidget(settings.captcha, el, settings.siteKey, settings.scriptUrl);
+    if (version) queueRecaptchaV2(el, siteKey);
+    else queueWidget(settings.captcha, el, siteKey, settings.scriptUrl);
   };
 
   const submitButton = (form) => {
@@ -163,7 +203,10 @@
     addCaptcha(form, container, settings);
   };
 
-  const scan = () => document.querySelectorAll(FORM_SELECTOR).forEach(protect);
+  const scan = () => {
+    document.querySelectorAll(FORM_SELECTOR).forEach(protect);
+    loadRecaptcha();
+  };
 
   let queued = false;
   const queueScan = () => {

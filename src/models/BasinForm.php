@@ -50,6 +50,9 @@ class BasinForm extends Model
     /** A hosted ID seen in this form's submissions that hasn't been saved. */
     public ?string $detectedHostedId = null;
 
+    /** This form's own reCAPTCHA version, or null for the site default. */
+    public ?string $recaptchaVersion = null;
+
     /** A template called `render()` for this form without saved embed code. */
     public bool $noEmbedReported = false;
 
