@@ -21,6 +21,12 @@
         </blockquote>
     {% endif %}
 
+    {% if form.needsEmbedCode %}
+        <blockquote class="note warning">
+            <p>{{ 'This form’s submissions come from Basin’s Form Studio, but its embed code hasn’t been added yet, so `form.render()` can’t show it. Add it below.'|t('basin')|md(inlineOnly=true) }}</p>
+        </blockquote>
+    {% endif %}
+
     {% if studioStatus == 'broken' %}
         <blockquote class="note warning">
             <p>{{ 'The saved Form Studio embed code no longer works. The form may have been deleted or republished in Form Studio. Paste the current embed code below.'|t('basin') }}</p>
@@ -52,6 +58,18 @@
         {% endif %}
     {% else %}
         <p>{{ 'If this form was built in Basin’s Form Studio, paste its embed code here so templates can show it with `form.render()`. Basin doesn’t provide it through its API, so it has to be added once by hand.'|t('basin')|md(inlineOnly=true) }}</p>
+        {% if canEditStudio and form.detectedHostedId %}
+            <form method="post" accept-charset="UTF-8" style="margin-bottom: var(--m);">
+                {{ csrfInput() }}
+                {{ actionInput('basin/forms/save-studio-embed') }}
+                {{ redirectInput(form.cpUrl) }}
+                {{ hiddenInput('formUuid', form.uuid) }}
+                {{ hiddenInput('embed', 'https://usebasin.com/form/' ~ form.uuid ~ '/hosted/' ~ form.detectedHostedId) }}
+                <p>{{ 'Basin’s submissions show this form’s Form Studio ID is `{id}`.'|t('basin', { id: form.detectedHostedId })|md(inlineOnly=true) }}</p>
+                <button type="submit" class="btn submit">{{ 'Use detected embed'|t('basin') }}</button>
+            </form>
+            <p class="light">{{ 'Or paste the embed code yourself:'|t('basin') }}</p>
+        {% endif %}
         {% if canEditStudio %}
             <form method="post" accept-charset="UTF-8">
                 {{ csrfInput() }}
@@ -68,7 +86,7 @@
                     rows: 2,
                     placeholder: '<script src="https://hf.usebasin.com/hf/' ~ form.uuid ~ '-…js" async></script>',
                 }) }}
-                <button type="submit" class="btn submit">{{ 'Save embed code'|t('basin') }}</button>
+                <button type="submit" class="btn {{ form.detectedHostedId ? '' : 'submit' }}">{{ 'Save embed code'|t('basin') }}</button>
             </form>
         {% elseif currentUser.admin %}
             <p class="light">{{ 'Embed codes are saved in project config, so they can only be added where admin changes are allowed. Add it in your development environment and deploy.'|t('basin') }}</p>

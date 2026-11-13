@@ -1,0 +1,254 @@
+{% extends '_layouts/cp' %}
+{% import '_includes/forms' as forms %}
+
+{% set title = form ? form.name : 'Submissions'|t('basin') %}
+{% set selectedSubnavItem = 'submissions' %}
+{% set crumbs = [
+    { label: settings.getNavLabel(), url: url('basin') },
+    { label: 'Submissions'|t('basin'), url: url('basin/submissions') },
+] %}
+
+{% set baseUrl = form ? url("basin/forms/#{form.uuid}/submissions") : null %}
+{% set listParams = form ? {
+    tab: criteria.tab != 'inbox' ? criteria.tab : null,
+    q: criteria.query ?: null,
+    order: criteria.order,
+    from: criteria.dateFrom,
+    to: criteria.dateTo,
+}|filter(v => v is not null) : {} %}
+
+{% block actionButton %}
+    {% if form %}
+        <a class="btn" href="{{ form.cpUrl }}">{{ 'Form details'|t('basin') }}</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    {% include 'basin/_includes/state' %}
+
+    {% if state == 'ready' and basinForms is empty and not error %}
+        <div class="zilch basin-empty">
+            <p>{{ 'There are no forms in this Basin project yet.'|t('basin') }}</p>
+        </div>
+    {% endif %}
+
+    {% if form %}
+        {# Form switcher and filters. A GET form, so views can be bookmarked. #}
+        <form method="get" action="{{ baseUrl }}" id="basin-filters" class="flex flex-wrap" style="gap: var(--s); margin-bottom: var(--m); align-items: flex-end;">
+            {% if criteria.tab != 'inbox' %}{{ hiddenInput('tab', criteria.tab) }}{% endif %}
+            <div>
+                <label for="basin-form-switch" class="smalltext light" style="display: block; margin-bottom: 2px;">{{ 'Form'|t('basin') }}</label>
+                <div class="select">
+                    <select id="basin-form-switch">
+                        {% for f in basinForms %}
+                            <option value="{{ url("basin/forms/#{f.uuid}/submissions") }}" {{ f.uuid == form.uuid ? 'selected' }}>{{ f.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="flex-grow" style="min-width: 12rem;">
+                <label for="basin-q" class="smalltext light" style="display: block; margin-bottom: 2px;">{{ 'Search'|t('basin') }}</label>
+                <input type="search" id="basin-q" name="q" value="{{ criteria.query }}" class="text fullwidth" placeholder="{{ 'Name, email, message…'|t('basin') }}">
+            </div>
+            <div>
+                <label for="basin-from" class="smalltext light" style="display: block; margin-bottom: 2px;">{{ 'From'|t('basin') }}</label>
+                <input type="date" id="basin-from" name="from" value="{{ criteria.dateFrom }}" class="text">
+            </div>
+            <div>
+                <label for="basin-to" class="smalltext light" style="display: block; margin-bottom: 2px;">{{ 'To'|t('basin') }}</label>
+                <input type="date" id="basin-to" name="to" value="{{ criteria.dateTo }}" class="text">
+            </div>
+            <div>
+                <label for="basin-order" class="smalltext light" style="display: block; margin-bottom: 2px;">{{ 'Sort'|t('basin') }}</label>
+                <div class="select">
+                    <select id="basin-order" name="order">
+                        {% for value, label in {
+                            '': 'Newest first'|t('basin'),
+                            date_asc: 'Oldest first'|t('basin'),
+                            email_asc: 'Email A–Z'|t('basin'),
+                            email_desc: 'Email Z–A'|t('basin'),
+                        } %}
+                            <option value="{{ value }}" {{ (criteria.order ?? '') == value ? 'selected' }}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div>
+                <button type="submit" class="btn">{{ 'Apply'|t('basin') }}</button>
+                {% if criteria.query or criteria.dateFrom or criteria.dateTo or criteria.order %}
+                    <a class="btn" href="{{ url(baseUrl, criteria.tab != 'inbox' ? { tab: criteria.tab } : {}) }}">{{ 'Clear'|t('basin') }}</a>
+                {% endif %}
+            </div>
+        </form>
+
+        {# Tabs #}
+        {% set counts = result.counts ?? {} %}
+        <nav class="btngroup" aria-label="{{ 'Submission folders'|t('basin') }}" style="margin-bottom: var(--m);">
+            {% for tab, label in { inbox: 'Inbox'|t('basin'), spam: 'Spam'|t('basin'), trash: 'Trash'|t('basin') } %}
+                <a class="btn {{ criteria.tab == tab ? 'active' }}" {{ criteria.tab == tab ? 'aria-current="page"' }}
+                   href="{{ url(baseUrl, listParams|merge({ tab: tab != 'inbox' ? tab : null })|filter(v => v is not null)) }}">
+                    {{ label }}{% if counts[tab] is defined and counts[tab] is not null %}<span class="light" style="margin-inline-start: 4px;">({{ counts[tab]|number }})</span>{% endif %}
+                </a>
+            {% endfor %}
+        </nav>
+
+        {% if result %}
+            {% if result.submissions is empty %}
+                <div class="zilch basin-empty">
+                    <p>
+                        {% if criteria.query or criteria.dateFrom or criteria.dateTo %}
+                            {{ 'No submissions match these filters.'|t('basin') }}
+                        {% elseif criteria.tab == 'spam' %}
+                            {{ 'No spam.'|t('basin') }}
+                        {% elseif criteria.tab == 'trash' %}
+                            {{ 'Trash is empty.'|t('basin') }}
+                        {% else %}
+                            {{ 'No submissions yet.'|t('basin') }}
+                        {% endif %}
+                    </p>
+                </div>
+            {% else %}
+                {% set pageParams = listParams|merge({ page: pageNum > 1 ? pageNum : null })|filter(v => v is not null) %}
+
+                <form method="post" id="basin-bulk" accept-charset="UTF-8">
+                    {{ csrfInput() }}
+                    {{ actionInput('basin/submissions/apply') }}
+                    {{ redirectInput(url(baseUrl, pageParams)) }}
+                    {{ hiddenInput('formUuid', form.uuid) }}
+
+                    {% if canManage or canDelete %}
+                        <div id="basin-bulk-bar" class="flex flex-wrap" style="gap: var(--xs); margin-bottom: var(--s); align-items: center;">
+                            <span id="basin-selected" class="light" aria-live="polite">{{ 'Select submissions to update them.'|t('basin') }}</span>
+                            {% if canManage %}
+                                <button type="submit" name="basinAction" value="markRead" class="btn small" disabled>{{ 'Mark read'|t('basin') }}</button>
+                                <button type="submit" name="basinAction" value="markUnread" class="btn small" disabled>{{ 'Mark unread'|t('basin') }}</button>
+                                {% if criteria.tab == 'spam' %}
+                                    <button type="submit" name="basinAction" value="markNotSpam" class="btn small" disabled>{{ 'Not spam'|t('basin') }}</button>
+                                {% elseif criteria.tab == 'inbox' %}
+                                    <button type="submit" name="basinAction" value="markSpam" class="btn small" disabled>{{ 'Mark as spam'|t('basin') }}</button>
+                                {% endif %}
+                                {% if criteria.tab == 'trash' %}
+                                    <button type="submit" name="basinAction" value="restore" class="btn small" disabled>{{ 'Restore'|t('basin') }}</button>
+                                {% else %}
+                                    <button type="submit" name="basinAction" value="trash" class="btn small" disabled>{{ 'Move to trash'|t('basin') }}</button>
+                                {% endif %}
+                            {% endif %}
+                            {% if canDelete %}
+                                <button type="submit" name="basinAction" value="delete" class="btn small" data-confirm-delete disabled>{{ 'Delete permanently'|t('basin') }}</button>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+
+                    <div class="tableview">
+                        <table class="data fullwidth" id="basin-submissions">
+                            <thead>
+                                <tr>
+                                    {% if canManage or canDelete %}
+                                        <td class="thin checkbox-cell">
+                                            <input type="checkbox" id="basin-select-all" class="checkbox" aria-label="{{ 'Select all'|t('basin') }}">
+                                            <label for="basin-select-all"></label>
+                                        </td>
+                                    {% endif %}
+                                    <th scope="col">{{ 'Submitted'|t('basin') }}</th>
+                                    <th scope="col">{{ 'Email'|t('basin') }}</th>
+                                    <th scope="col">{{ 'Details'|t('basin') }}</th>
+                                    <th scope="col" class="thin"><span class="visually-hidden">{{ 'Attachments'|t('basin') }}</span></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for submission in result.submissions %}
+                                    {% set viewUrl = submission.getCpUrl(pageParams) %}
+                                    <tr style="{{ not submission.read ? 'font-weight: bold;' }}">
+                                        {% if canManage or canDelete %}
+                                            <td class="thin checkbox-cell">
+                                                <input type="checkbox" name="ids[]" value="{{ submission.id }}" id="basin-s{{ submission.id }}" class="checkbox basin-row">
+                                                <label for="basin-s{{ submission.id }}"><span class="visually-hidden">{{ 'Select'|t('basin') }}</span></label>
+                                            </td>
+                                        {% endif %}
+                                        <td style="white-space: nowrap;">
+                                            <a href="{{ viewUrl }}">{{ submission.dateCreated ? submission.dateCreated|datetime('short', timezone=form.phpTimezone) : '—' }}</a>
+                                            {% if not submission.read %}<span class="visually-hidden">{{ '(unread)'|t('basin') }}</span>{% endif %}
+                                        </td>
+                                        <td>{{ submission.email ?? '—' }}</td>
+                                        <td class="light" style="font-weight: normal;">
+                                            {% for name, value in submission.getPreview(3) %}{{ value }}{% if not loop.last %} · {% endif %}{% endfor %}
+                                        </td>
+                                        <td class="thin">
+                                            {% if submission.attachments|length %}
+                                                {% set attachLabel = '{count, plural, =1{1 attachment} other{# attachments}}'|t('basin', { count: submission.attachments|length }) %}
+                                                <span class="cp-icon small" title="{{ attachLabel }}">{{ iconSvg('paperclip', attachLabel) }}</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </form>
+
+                {# Pagination: Basin pages are 100 rows. #}
+                {% set total = result.total %}
+                {% set first = (pageNum - 1) * result.perPage + 1 %}
+                {% set last = first + result.submissions|length - 1 %}
+                <div class="flex" style="margin-top: var(--m); align-items: center; gap: var(--s);">
+                    {% if pageNum > 1 %}
+                        <a class="btn small" href="{{ url(baseUrl, listParams|merge({ page: pageNum - 1 > 1 ? pageNum - 1 : null })|filter(v => v is not null)) }}" data-icon="larr">{{ 'Previous'|t('basin') }}</a>
+                    {% endif %}
+                    <span class="light">
+                        {% if total is not null %}
+                            {{ '{first}–{last} of {total}'|t('basin', { first: first|number, last: last|number, total: total|number }) }}
+                        {% else %}
+                            {{ '{first}–{last}'|t('basin', { first: first|number, last: last|number }) }}
+                        {% endif %}
+                    </span>
+                    {% if total is not null ? pageNum * result.perPage < total : result.submissions|length >= result.perPage %}
+                        <a class="btn small" href="{{ url(baseUrl, listParams|merge({ page: pageNum + 1 })) }}" data-icon="rarr">{{ 'Next'|t('basin') }}</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endif %}
+
+        {% js %}
+            {% verbatim %}
+            (() => {
+                const switcher = document.getElementById('basin-form-switch');
+                switcher?.addEventListener('change', () => { window.location.href = switcher.value; });
+
+                const bulk = document.getElementById('basin-bulk');
+                if (!bulk) return;
+                const all = document.getElementById('basin-select-all');
+                const rows = [...bulk.querySelectorAll('.basin-row')];
+                const buttons = [...bulk.querySelectorAll('#basin-bulk-bar button')];
+                const status = document.getElementById('basin-selected');
+                const idle = status?.textContent;
+
+                const update = () => {
+                    const n = rows.filter(r => r.checked).length;
+                    buttons.forEach(b => { b.disabled = n === 0; b.classList.toggle('disabled', n === 0); });
+                    if (all) {
+                        all.checked = n > 0 && n === rows.length;
+                        all.indeterminate = n > 0 && n < rows.length;
+                    }
+                    if (status) {
+                        status.textContent = n ? Craft.t('basin', '{num, plural, =1{1 selected} other{# selected}}', { num: n }) : idle;
+                    }
+                };
+                all?.addEventListener('change', () => { rows.forEach(r => r.checked = all.checked); update(); });
+                rows.forEach(r => r.addEventListener('change', update));
+
+                bulk.addEventListener('submit', (event) => {
+                    const button = event.submitter;
+                    if (button?.hasAttribute('data-confirm-delete')) {
+                        const n = rows.filter(r => r.checked).length;
+                        const message = Craft.t('basin', 'Permanently delete {num, plural, =1{this submission} other{these # submissions}} from Basin? This can’t be undone.', { num: n });
+                        if (!confirm(message)) {
+                            event.preventDefault();
+                        }
+                    }
+                });
+                update();
+            })();
+            {% endverbatim %}
+        {% endjs %}
+    {% endif %}
+{% endblock %}

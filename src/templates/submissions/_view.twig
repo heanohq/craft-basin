@@ -1,0 +1,145 @@
+{% extends '_layouts/cp' %}
+
+{% set title = submission.email ?? 'Submission {id}'|t('basin', { id: submission.id }) %}
+{% set selectedSubnavItem = 'submissions' %}
+{% set listUrl = url("basin/forms/#{form.uuid}/submissions", listParams) %}
+{% set crumbs = [
+    { label: settings.getNavLabel(), url: url('basin') },
+    { label: 'Submissions'|t('basin'), url: url('basin/submissions') },
+    { label: form.name, url: listUrl },
+] %}
+{% set tz = form.phpTimezone %}
+
+{% macro actionButton(label, action, submission, form, redirect, extra) %}
+    <form method="post" accept-charset="UTF-8" style="display: inline;" {{ extra.confirm is defined ? "data-confirm=\"#{extra.confirm|e('html_attr')}\""|raw }}>
+        {{ csrfInput() }}
+        {{ actionInput('basin/submissions/apply') }}
+        {{ redirectInput(redirect) }}
+        {{ hiddenInput('formUuid', form.uuid) }}
+        {{ hiddenInput('ids[]', submission.id) }}
+        {{ hiddenInput('basinAction', action) }}
+        <button type="submit" class="btn {{ extra.class ?? '' }}">{{ label }}</button>
+    </form>
+{% endmacro %}
+
+{% block actionButton %}
+    {% set here = submission.getCpUrl(listParams) %}
+    <div class="flex" style="gap: var(--xs); flex-wrap: wrap;">
+        {% if canManage %}
+            {{ _self.actionButton('Mark unread'|t('basin'), 'markUnread', submission, form, listUrl) }}
+            {% if submission.spam %}
+                {{ _self.actionButton('Not spam'|t('basin'), 'markNotSpam', submission, form, here) }}
+            {% else %}
+                {{ _self.actionButton('Mark as spam'|t('basin'), 'markSpam', submission, form, listUrl) }}
+            {% endif %}
+            {% if submission.trash %}
+                {{ _self.actionButton('Restore'|t('basin'), 'restore', submission, form, here) }}
+            {% else %}
+                {{ _self.actionButton('Move to trash'|t('basin'), 'trash', submission, form, listUrl) }}
+            {% endif %}
+        {% endif %}
+        {% if canDelete %}
+            {{ _self.actionButton('Delete permanently'|t('basin'), 'delete', submission, form, listUrl, {
+                class: 'caution',
+                confirm: 'Permanently delete this submission from Basin? This can’t be undone.'|t('basin'),
+            }) }}
+        {% endif %}
+        <a class="btn" href="{{ submission.basinUrl }}" target="_blank" rel="noopener" data-icon="external">{{ 'Open in Basin'|t('basin') }}</a>
+    </div>
+{% endblock %}
+
+{% block content %}
+    {% if submission.spam or submission.trash %}
+        <blockquote class="note warning">
+            <p>
+                {% if submission.trash %}{{ 'This submission is in the trash.'|t('basin') }}{% endif %}
+                {% if submission.spam %}{{ 'Basin marked this submission as spam.'|t('basin') }}{% if submission.spamReason %} <span class="light">({{ submission.spamReason|replace({ '_': ' ' }) }})</span>{% endif %}{% endif %}
+            </p>
+        </blockquote>
+    {% endif %}
+
+    <h2>{{ 'Fields'|t('basin') }}</h2>
+    {% if submission.payload is empty %}
+        <p class="light">{{ 'This submission has no fields.'|t('basin') }}</p>
+    {% else %}
+        <table class="data fullwidth">
+            <tbody>
+                {% for name, value in submission.payload %}
+                    {% set text = submission.stringify(value) %}
+                    <tr>
+                        <th scope="row" style="width: 30%; vertical-align: top;">{{ name }}</th>
+                        <td style="white-space: pre-wrap; word-break: break-word;">{% if value is iterable %}<code style="white-space: pre-wrap;">{{ text }}</code>{% else %}{{ text }}{% endif %}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    {% if submission.attachments|length %}
+        <hr>
+        <h2>{{ 'Attachments'|t('basin') }}</h2>
+        <ul>
+            {% for attachment in submission.attachments %}
+                <li style="margin-bottom: var(--xs);">
+                    <a href="{{ url("basin/forms/#{form.uuid}/submissions/#{submission.id}/attachments/#{attachment.id}") }}" data-icon="download">{{ attachment.name }}</a>
+                    <span class="light">
+                        {%- if attachment.size is not null %} · {{ attachment.size|filesize }}{% endif -%}
+                        {%- if attachment.contentType %} · {{ attachment.contentType }}{% endif -%}
+                    </span>
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <hr>
+    <div class="flex" style="justify-content: space-between;">
+        {% if prev %}
+            <a class="btn" data-icon="larr" href="{{ url("basin/forms/#{form.uuid}/submissions/#{prev.id}", listParams|merge({ page: prev.page > 1 ? prev.page : null })|filter(v => v is not null)) }}">{{ 'Previous'|t('basin') }}</a>
+        {% else %}<span></span>{% endif %}
+        <a class="btn" href="{{ listUrl }}">{{ 'Back to list'|t('basin') }}</a>
+        {% if next %}
+            <a class="btn" data-icon="rarr" href="{{ url("basin/forms/#{form.uuid}/submissions/#{next.id}", listParams|merge({ page: next.page > 1 ? next.page : null })|filter(v => v is not null)) }}">{{ 'Next'|t('basin') }}</a>
+        {% else %}<span></span>{% endif %}
+    </div>
+
+    {% js %}
+        document.querySelectorAll('form[data-confirm]').forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!confirm(form.dataset.confirm)) event.preventDefault();
+            });
+        });
+    {% endjs %}
+{% endblock %}
+
+{% block details %}
+    <div class="meta read-only">
+        <div class="data">
+            <h5 class="heading">{{ 'Submitted'|t('basin') }}</h5>
+            <div class="value">{{ submission.dateCreated ? submission.dateCreated|datetime('short', timezone=tz) ~ ' (' ~ tz ~ ')' : '—' }}</div>
+        </div>
+        <div class="data">
+            <h5 class="heading">{{ 'Form'|t('basin') }}</h5>
+            <div class="value"><a href="{{ form.cpUrl }}">{{ form.name }}</a></div>
+        </div>
+        <div class="data">
+            <h5 class="heading">{{ 'Status'|t('basin') }}</h5>
+            <div class="value">{{ { inbox: 'Inbox'|t('basin'), spam: 'Spam'|t('basin'), trash: 'Trash'|t('basin') }[submission.status] }}{{ submission.read ? '' : ' · ' ~ 'Unread'|t('basin') }}</div>
+        </div>
+        {% for label, value in {
+            ('Email'|t('basin')): submission.email,
+            ('Location'|t('basin')): submission.location,
+            ('IP address'|t('basin')): submission.ip,
+            ('Page'|t('basin')): submission.sourceUrl,
+            ('Referrer'|t('basin')): submission.referrer,
+            ('Browser'|t('basin')): submission.userAgent,
+            ('Webhook sent'|t('basin')): submission.webhookSentAt ? submission.webhookSentAt|datetime('short', timezone=tz) : null,
+        } %}
+            {% if value %}
+                <div class="data">
+                    <h5 class="heading">{{ label }}</h5>
+                    <div class="value" style="word-break: break-word;">{{ value }}</div>
+                </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+{% endblock %}

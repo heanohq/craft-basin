@@ -15,6 +15,7 @@ use craft\web\UrlManager;
 use heano\basin\models\Settings;
 use heano\basin\services\Api;
 use heano\basin\services\Forms;
+use heano\basin\services\Submissions;
 use yii\base\Event;
 
 /**
@@ -22,6 +23,7 @@ use yii\base\Event;
  *
  * @property-read Api $api
  * @property-read Forms $forms
+ * @property-read Submissions $submissions
  * @method Settings getSettings()
  * @method static Plugin getInstance()
  */
@@ -37,6 +39,7 @@ class Plugin extends BasePlugin
             'components' => [
                 'api' => Api::class,
                 'forms' => Forms::class,
+                'submissions' => Submissions::class,
             ],
         ];
     }
@@ -74,6 +77,11 @@ class Plugin extends BasePlugin
         return $this->get('forms');
     }
 
+    public function getSubmissions(): Submissions
+    {
+        return $this->get('submissions');
+    }
+
     public function getCpNavItem(): ?array
     {
         $item = parent::getCpNavItem();
@@ -82,6 +90,9 @@ class Plugin extends BasePlugin
         $subNav = [
             'forms' => ['label' => Craft::t('basin', 'Forms'), 'url' => 'basin/forms'],
         ];
+        if (Craft::$app->getUser()->checkPermission('basin-viewSubmissions')) {
+            $subNav['submissions'] = ['label' => Craft::t('basin', 'Submissions'), 'url' => 'basin/submissions'];
+        }
         if (Craft::$app->getUser()->getIsAdmin()) {
             $subNav['settings'] = ['label' => Craft::t('basin', 'Settings'), 'url' => 'basin/settings'];
         }
@@ -137,6 +148,10 @@ class Plugin extends BasePlugin
             $event->rules['basin'] = 'basin/forms/index';
             $event->rules['basin/forms'] = 'basin/forms/index';
             $event->rules['basin/forms/<uuid:[A-Za-z0-9]+>'] = 'basin/forms/view';
+            $event->rules['basin/submissions'] = 'basin/submissions/index';
+            $event->rules['basin/forms/<uuid:[A-Za-z0-9]+>/submissions'] = 'basin/submissions/index';
+            $event->rules['basin/forms/<uuid:[A-Za-z0-9]+>/submissions/<id:\d+>'] = 'basin/submissions/view';
+            $event->rules['basin/forms/<uuid:[A-Za-z0-9]+>/submissions/<id:\d+>/attachments/<attachmentId:\d+>'] = 'basin/submissions/download';
             $event->rules['basin/settings'] = 'basin/settings/index';
         });
     }

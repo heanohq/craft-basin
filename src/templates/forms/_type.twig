@@ -6,6 +6,9 @@
     {% else %}
         {{ 'Form Studio'|t('basin') }}
     {% endif %}
+{% elseif form.needsEmbedCode %}
+    <span class="warning" data-icon="alert" aria-hidden="true"></span>
+    {{ 'Form Studio: embed code needed'|t('basin') }}
 {% else %}
     {{ 'Endpoint'|t('basin') }}
 {% endif %}

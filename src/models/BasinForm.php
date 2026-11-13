@@ -41,6 +41,9 @@ class BasinForm extends Model
     /** Form Studio hosted ID saved in plugin settings (spec §10.3). */
     public ?string $hostedFormId = null;
 
+    /** A hosted ID seen in this form's submissions that hasn't been saved. */
+    public ?string $detectedHostedId = null;
+
     /**
      * @param array<string, mixed> $data A form from Basin's API.
      */
@@ -71,6 +74,17 @@ class BasinForm extends Model
         ]);
     }
 
+    /**
+     * The form's timezone as a PHP identifier, for showing submission dates.
+     * Basin's value may not be one PHP knows; those fall back to UTC.
+     */
+    public function getPhpTimezone(): string
+    {
+        return in_array($this->timezone, \DateTimeZone::listIdentifiers(), true) || $this->timezone === 'UTC'
+            ? $this->timezone
+            : 'UTC';
+    }
+
     /** The URL forms post to. */
     public function getAction(): string
     {
@@ -98,6 +112,12 @@ class BasinForm extends Model
     public function getHasTurnstileProblem(): bool
     {
         return $this->turnstile && $this->turnstileSiteKey === null;
+    }
+
+    /** A Studio form whose embed code hasn't been saved yet. */
+    public function getNeedsEmbedCode(): bool
+    {
+        return $this->hostedFormId === null && $this->detectedHostedId !== null;
     }
 
     /** Whether `render()` can output this form (its Studio embed code is saved). */

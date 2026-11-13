@@ -88,6 +88,7 @@ class Forms extends Component
                 continue;
             }
             $form = BasinForm::fromApi($row, $settings->getHostedFormId((string)$row['uuid']));
+            $form->detectedHostedId = $this->getDetectedHostedId($form->uuid);
             $forms[$form->uuid] = $form;
         }
         uasort($forms, fn(BasinForm $a, BasinForm $b) => strnatcasecmp($a->name, $b->name));
@@ -180,6 +181,30 @@ class Forms extends Component
     {
         $cached = Craft::$app->getCache()->get('basin:studio-script:' . md5(StudioEmbed::scriptUrl($uuid, $hostedId)));
         return $cached === false ? null : $cached['ok'];
+    }
+
+    /**
+     * Records a Studio hosted ID spotted in a submission's referrer, so the CP
+     * can offer it (spec §10.3). Kept until the embed code is saved.
+     */
+    public function rememberDetectedHostedId(string $uuid, string $hostedId): void
+    {
+        if (Plugin::getInstance()->getSettings()->getHostedFormId($uuid) === $hostedId) {
+            return;
+        }
+        Craft::$app->getCache()->set('basin:studio-detected:' . $uuid, $hostedId);
+    }
+
+    /**
+     * A detected hosted ID that differs from the saved one, if any.
+     */
+    public function getDetectedHostedId(string $uuid): ?string
+    {
+        $detected = Craft::$app->getCache()->get('basin:studio-detected:' . $uuid);
+        if (!is_string($detected) || !StudioEmbed::isValidHostedId($detected)) {
+            return null;
+        }
+        return Plugin::getInstance()->getSettings()->getHostedFormId($uuid) === $detected ? null : $detected;
     }
 
     public function invalidateCaches(): void

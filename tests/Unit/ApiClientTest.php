@@ -182,3 +182,93 @@ it('strips turnstile_secret from forms', function() {
         ->toHaveKey('turnstile_site_key')
         ->and($client->getForm(1))->not->toHaveKey('turnstile_secret');
 });
+
+function query(array $history, int $i = 0): array
+{
+    parse_str($history[$i]['request']->getUri()->getQuery(), $q);
+    return $q;
+}
+
+it('lists submissions with Basin’s real format and counts', function() {
+    $history = [];
+    $result = basinClient([json(200, fixture('submissions'))], $history)->listSubmissions(['formId' => 1004]);
+    expect($result->total)->toBe(4)
+        ->and($result->meta['inbox_count'])->toBe(3)
+        ->and($result->meta['spam_count'])->toBe(1)
+        ->and(query($history))->toBe(['form_id' => '1004', 'page' => '1']);
+});
+
+it('sends search, filter, order and date range', function() {
+    $history = [];
+    basinClient([json(200, ['submissions' => [], 'meta' => []])], $history)->listSubmissions([
+        'formId' => 5, 'filter' => 'spam', 'query' => 'bob', 'order' => 'email_asc',
+        'dateFrom' => '2026-11-01', 'dateTo' => '2026-11-13',
+    ], 2);
+    expect(query($history))->toBe([
+        'form_id' => '5', 'filter_by' => 'spam', 'query' => 'bob', 'order_by' => 'email_asc',
+        'date_range' => '2026-11-01 to 2026-11-13', 'page' => '2',
+    ]);
+});
+
+it('fills in an open-ended date range', function() {
+    $history = [];
+    basinClient([json(200, ['submissions' => []])], $history)->listSubmissions(['dateFrom' => '2026-11-01']);
+    expect(query($history)['date_range'])->toBe('2026-11-01 to 2999-12-31');
+});
+
+it('refuses filters Basin would silently ignore', function(array $criteria) {
+    $history = [];
+    expect(fn() => basinClient([json(200, [])], $history)->listSubmissions($criteria))->toThrow(InvalidArgumentException::class);
+    expect($history)->toBeEmpty();
+})->with([
+    'unread filter' => [['filter' => 'unread']],
+    'new filter' => [['filter' => 'new']],
+    'unknown order' => [['order' => 'name']],
+    'bad date' => [['dateFrom' => '13/11/2026']],
+]);
+
+it('updates flags with the submission wrapper', function() {
+    $history = [];
+    $updated = basinClient([json(200, ['id' => 9, 'read' => true, 'trash' => true])], $history)
+        ->updateSubmission(9, ['read' => 1, 'trash' => true]);
+    $request = $history[0]['request'];
+    expect($request->getMethod())->toBe('PATCH')
+        ->and($request->getUri()->getPath())->toBe('/api/v1/submissions/9')
+        ->and(json_decode((string)$request->getBody(), true))->toBe(['submission' => ['read' => true, 'trash' => true]])
+        ->and($updated['trash'])->toBeTrue();
+});
+
+it('only updates read, spam and trash', function(array $flags) {
+    $history = [];
+    expect(fn() => basinClient([json(200, [])], $history)->updateSubmission(9, $flags))->toThrow(InvalidArgumentException::class);
+    expect($history)->toBeEmpty();
+})->with([[[]], [['email' => 'x@example.com']], [['read' => true, 'payload_params' => []]]]);
+
+it('deletes a submission', function() {
+    $history = [];
+    basinClient([new Response(200, [], '')], $history)->deleteSubmission(9);
+    expect($history[0]['request']->getMethod())->toBe('DELETE')
+        ->and($history[0]['request']->getUri()->getPath())->toBe('/api/v1/submissions/9');
+});
+
+it('streams attachments through the authenticated proxy', function() {
+    $history = [];
+    $response = basinClient([new Response(200, ['Content-Type' => 'image/png'], 'PNGDATA')], $history)->downloadAttachment(42);
+    expect((string)$response->getBody())->toBe('PNGDATA')
+        ->and($history[0]['request']->getUri()->getPath())->toBe('/api/v1/attachments/42')
+        ->and($history[0]['request']->getHeaderLine('Authorization'))->toBe('Token secret-key');
+});
+
+it('maps attachment errors to exceptions', function() {
+    basinClient([json(404, ['error' => 'Not Found'])])->downloadAttachment(42);
+})->throws(NotFoundException::class);
+
+it('never returns attachment public URLs', function() {
+    $fixture = fixture('submissions');
+    $client = basinClient([json(200, $fixture), json(200, $fixture['submissions'][3])]);
+    $listed = array_merge(...array_column($client->listSubmissions([])->items, 'attachments'));
+    $single = $client->getSubmission(1)['attachments'];
+    expect($listed)->not->toBeEmpty()
+        ->and(array_filter($listed, fn($a) => isset($a['public_url'])))->toBeEmpty()
+        ->and($single[0])->not->toHaveKey('public_url')->toHaveKey('attachment_proxy_url');
+});

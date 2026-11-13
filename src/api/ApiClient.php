@@ -35,6 +35,12 @@ final class ApiClient
      */
     private const LIST_WRAPPER_KEYS = ['projects', 'forms', 'form_views', 'submissions', 'data', 'items', 'results'];
 
+    /** `filter_by` values Basin understands. Null (omitted) is the inbox. */
+    public const SUBMISSION_FILTERS = ['spam', 'trash'];
+
+    /** `order_by` values Basin understands. Null (omitted) is newest first. */
+    public const SUBMISSION_ORDERS = ['date_desc', 'date_asc', 'email_asc', 'email_desc'];
+
     public function __construct(
         private readonly ClientInterface $http,
         private readonly string $apiKey,
@@ -88,6 +94,133 @@ final class ApiClient
     }
 
     /**
+     * Submissions, newest first unless `order_by` says otherwise.
+     *
+     * Only known `filter_by` and `order_by` values are sent: Basin ignores an
+     * unknown `filter_by` and returns everything, spam included (spec §7.1).
+     *
+     * @param array{formId?: int|null, projectId?: int|null, filter?: string|null, query?: string|null, order?: string|null, dateFrom?: string|null, dateTo?: string|null} $criteria
+     * @throws ApiException
+     */
+    public function listSubmissions(array $criteria, int $page = 1): ListPage
+    {
+        $filter = $criteria['filter'] ?? null;
+        if ($filter !== null && !in_array($filter, self::SUBMISSION_FILTERS, true)) {
+            throw new \InvalidArgumentException("Unsupported submission filter: $filter");
+        }
+        $order = $criteria['order'] ?? null;
+        if ($order !== null && !in_array($order, self::SUBMISSION_ORDERS, true)) {
+            throw new \InvalidArgumentException("Unsupported submission order: $order");
+        }
+
+        $dateRange = null;
+        $from = $criteria['dateFrom'] ?? null;
+        $to = $criteria['dateTo'] ?? null;
+        if ($from !== null || $to !== null) {
+            foreach ([$from, $to] as $date) {
+                if ($date !== null && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+                    throw new \InvalidArgumentException('Dates must be YYYY-MM-DD.');
+                }
+            }
+            $dateRange = ($from ?? '2000-01-01') . ' to ' . ($to ?? '2999-12-31');
+        }
+
+        $result = $this->normaliseList($this->get('submissions', [
+            'form_id' => $criteria['formId'] ?? null,
+            'project_id' => $criteria['projectId'] ?? null,
+            'filter_by' => $filter,
+            'query' => $criteria['query'] ?? null,
+            'order_by' => $order,
+            'date_range' => $dateRange,
+            'page' => $page,
+        ]), $page);
+
+        return new ListPage(
+            array_map(fn(array $row) => $this->sanitiseSubmission($row), $result->items),
+            $result->page, $result->perPage, $result->total, $result->meta,
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     * @throws ApiException
+     */
+    public function getSubmission(int $id): array
+    {
+        return $this->sanitiseSubmission($this->normaliseObject($this->get('submissions/' . $id)));
+    }
+
+    /**
+     * Sets the read, spam and/or trash flags. Other keys are rejected, because
+     * Basin silently ignores them.
+     *
+     * @param array{read?: bool, spam?: bool, trash?: bool} $flags
+     * @return array<string, mixed> The updated submission
+     * @throws ApiException
+     */
+    public function updateSubmission(int $id, array $flags): array
+    {
+        $unknown = array_diff(array_keys($flags), ['read', 'spam', 'trash']);
+        if ($unknown || $flags === []) {
+            throw new \InvalidArgumentException('Only read, spam and trash can be updated.');
+        }
+        $flags = array_map(fn($v) => (bool)$v, $flags);
+
+        return $this->sanitiseSubmission($this->normaliseObject($this->send('PATCH', 'submissions/' . $id, [
+            'json' => ['submission' => $flags],
+        ])));
+    }
+
+    /**
+     * Permanently deletes a submission. Callers must check the plugin's
+     * `allowDeletion` setting and the user's permission first.
+     *
+     * @throws ApiException
+     */
+    public function deleteSubmission(int $id): void
+    {
+        $this->send('DELETE', 'submissions/' . $id);
+    }
+
+    /**
+     * Streams an attachment through the authenticated proxy URL.
+     *
+     * @throws ApiException
+     */
+    public function downloadAttachment(int $id): ResponseInterface
+    {
+        $response = $this->request('GET', 'attachments/' . $id, [
+            'stream' => true,
+            'headers' => ['Accept' => '*/*'],
+        ]);
+        if ($response->getStatusCode() >= 300) {
+            // Throws the matching typed exception.
+            $this->handleResponse($response);
+        }
+        return $response;
+    }
+
+    /**
+     * Attachment `public_url`s work for anyone who has them, with no auth, so
+     * they're dropped here and downloads go through {@see downloadAttachment()}.
+     *
+     * @param array<string, mixed> $submission
+     * @return array<string, mixed>
+     */
+    private function sanitiseSubmission(array $submission): array
+    {
+        if (isset($submission['attachments']) && is_array($submission['attachments'])) {
+            foreach ($submission['attachments'] as &$attachment) {
+                if (is_array($attachment)) {
+                    unset($attachment['public_url']);
+                }
+            }
+            unset($attachment);
+        }
+        return $submission;
+    }
+
+    /**
      * Basin returns form secrets in plain text. Remove them before anything
      * else sees the data, so they can't be cached, logged or rendered.
      *
@@ -115,6 +248,17 @@ final class ApiClient
      */
     private function send(string $method, string $path, array $options = []): mixed
     {
+        return $this->handleResponse($this->request($method, $path, $options));
+    }
+
+    /**
+     * Makes a request and returns the raw response, whatever its status.
+     *
+     * @param array<string, mixed> $options
+     * @throws ApiException
+     */
+    private function request(string $method, string $path, array $options = []): ResponseInterface
+    {
         if ($this->apiKey === '') {
             throw new AuthException('No Basin API key is configured.');
         }
@@ -130,14 +274,12 @@ final class ApiClient
         ];
 
         try {
-            $response = $this->http->request($method, self::BASE_URI . ltrim($path, '/'), $options);
+            return $this->http->request($method, self::BASE_URI . ltrim($path, '/'), $options);
         } catch (ConnectException $e) {
             throw new ApiUnavailableException('Could not connect to Basin.', 0, $e);
         } catch (TransferException|GuzzleException $e) {
             throw new ApiUnavailableException('The request to Basin failed.', 0, $e);
         }
-
-        return $this->handleResponse($response);
     }
 
     /**

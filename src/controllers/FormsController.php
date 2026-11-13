@@ -3,7 +3,6 @@
 namespace heano\basin\controllers;
 
 use Craft;
-use craft\web\Controller;
 use heano\basin\api\exceptions\ApiException;
 use heano\basin\helpers\StudioEmbed;
 use heano\basin\models\BasinForm;
@@ -15,17 +14,8 @@ use yii\web\Response;
  * Forms index and form detail (spec §6.4, §6.5), plus saving Form Studio
  * embed codes (spec §10.3).
  */
-class FormsController extends Controller
+class FormsController extends BaseCpController
 {
-    public function beforeAction($action): bool
-    {
-        if (!parent::beforeAction($action)) {
-            return false;
-        }
-        $this->requirePermission('accessPlugin-basin');
-        return true;
-    }
-
     public function actionIndex(): Response
     {
         $variables = $this->baseVariables();
@@ -137,60 +127,10 @@ class FormsController extends Controller
         return $this->asSuccess(Craft::t('basin', 'Embed code removed.'));
     }
 
-    /**
-     * Variables every Basin screen needs, including which empty state applies.
-     */
-    private function baseVariables(): array
-    {
-        $plugin = Plugin::getInstance();
-        $settings = $plugin->getSettings();
-
-        $state = match (true) {
-            $settings->getApiKey() === '' => 'noKey',
-            $settings->getProjectId() === null => 'noProject',
-            default => 'ready',
-        };
-
-        $project = null;
-        $error = null;
-        if ($state === 'ready') {
-            try {
-                $project = $plugin->getApi()->getLinkedProject();
-                if ($project === null) {
-                    $state = 'projectMissing';
-                }
-            } catch (ApiException $e) {
-                // The forms list may still be available from the last known copy.
-                $error = $e->getMessage();
-            }
-        }
-
-        return [
-            'settings' => $settings,
-            'state' => $state,
-            'project' => $project,
-            'error' => $error,
-            'canViewCounts' => Craft::$app->getUser()->checkPermission('basin-viewSubmissions'),
-        ];
-    }
-
     private function canEditStudio(): bool
     {
         return Craft::$app->getUser()->getIsAdmin()
             && Craft::$app->getConfig()->getGeneral()->allowAdminChanges
             && !in_array('studioForms', Plugin::getInstance()->getConfigOverrides(), true);
-    }
-
-    private function requireForm(string $uuid): BasinForm
-    {
-        try {
-            $form = Plugin::getInstance()->getForms()->getFormByUuid($uuid);
-        } catch (ApiException) {
-            $form = null;
-        }
-        if (!$form) {
-            throw new NotFoundHttpException('Form not found');
-        }
-        return $form;
     }
 }
