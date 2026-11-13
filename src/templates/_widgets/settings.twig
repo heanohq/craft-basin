@@ -1,0 +1,17 @@
+{% import '_includes/forms' as forms %}
+
+{{ forms.selectField({
+    label: 'Form'|t('basin'),
+    id: 'formUuid',
+    name: 'formUuid',
+    options: [{ label: 'All forms in the project'|t('basin'), value: '' }]|merge(basinForms|map(f => { label: f.name, value: f.uuid })|values),
+    value: widget.formUuid,
+}) }}
+
+{{ forms.selectField({
+    label: 'Submissions to show'|t('basin'),
+    id: 'limit',
+    name: 'limit',
+    options: [5, 10, 20]|map(n => { label: n, value: n })|values,
+    value: widget.limit,
+}) }}

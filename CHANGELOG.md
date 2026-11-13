@@ -21,5 +21,8 @@
 - `form.honeypot()`, `form.captcha()` and `form.spamProtection()` for placing spam protection yourself.
 - Basin Form field type, with a setting to limit it to endpoint forms, Form Studio forms with embed code, or particular forms. A form that’s no longer in the project shows a warning and is kept until an editor changes it.
 - Warnings in the Control Panel when the site uses a form that isn’t in the linked project, or renders a Form Studio form without its embed code, with the page it was used on.
+- CSV export of the current submissions view (form, tab, search, dates and sort), with every field as a column, CP links for attachments and, optionally, IP address, browser and referrer. Up to 1,000 submissions download straight away; larger exports are prepared in the background and can be downloaded once, by the person who asked for them, for 24 hours.
+- Basin Submissions dashboard widget showing unread and inbox counts and the latest submissions, for one form or the whole project.
+- Unread count badge on the Basin menu item and Submissions subnav item.
 - User permissions: “View submissions and submission counts”, “Manage submissions”, “Export submissions” and (when deletion is allowed) “Permanently delete submissions”. Submission counts are hidden from users without “View submissions”.
 - If Basin can’t be reached, the Control Panel shows the last known list of forms.

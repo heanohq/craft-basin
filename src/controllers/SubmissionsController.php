@@ -7,10 +7,13 @@ use craft\helpers\Queue;
 use craft\helpers\UrlHelper;
 use heano\basin\api\ApiClient;
 use heano\basin\api\exceptions\ApiException;
+use heano\basin\helpers\CsvExport;
 use heano\basin\jobs\BulkSubmissionAction;
 use heano\basin\models\BasinForm;
 use heano\basin\Plugin;
+use heano\basin\services\Exports;
 use heano\basin\services\Submissions;
+use yii\caching\TagDependency;
 use yii\web\BadRequestHttpException;
 use yii\web\ForbiddenHttpException;
 use yii\web\NotFoundHttpException;
@@ -68,6 +71,12 @@ class SubmissionsController extends BaseCpController
         $variables['criteria'] = $criteria;
         $variables['pageNum'] = max(1, (int)$this->request->getQueryParam('page', 1));
         $variables += $this->permissionVariables();
+        $variables['exports'] = $variables['canExport']
+            ? array_values(array_filter(
+                Plugin::getInstance()->getExports()->listForUser((int)Craft::$app->getUser()->getId()),
+                fn($e) => $e['formUuid'] === $form->uuid,
+            ))
+            : [];
 
         try {
             $variables['result'] = $plugin->getSubmissions()->getPage($form, $criteria, $variables['pageNum']);
@@ -219,6 +228,108 @@ class SubmissionsController extends BaseCpController
     }
 
     /**
+     * Refreshes the dashboard widget and nav badge counts.
+     */
+    public function actionRefreshRecent(): Response
+    {
+        TagDependency::invalidate(Craft::$app->getCache(), Submissions::RECENT_TAG);
+        return $this->redirect('dashboard');
+    }
+
+    /**
+     * Exports the current view as CSV (spec §8). Small exports download
+     * straight away; larger ones are queued.
+     */
+    public function actionExport(): Response
+    {
+        $this->requirePostRequest();
+        $this->requirePermission('basin-exportSubmissions');
+        $plugin = Plugin::getInstance();
+        $form = $this->requireForm((string)$this->request->getRequiredBodyParam('formUuid'));
+        $criteria = $this->criteria();
+        $technical = (bool)$this->request->getBodyParam('technical');
+
+        try {
+            $total = $plugin->getSubmissions()->getPage($form, $criteria)['total'];
+        } catch (ApiException $e) {
+            return $this->asFailure(Craft::t('basin', 'Couldn’t reach Basin: {error}', ['error' => $e->getMessage()]));
+        }
+
+        if ($total !== null && $total > Exports::SYNC_MAX_ROWS) {
+            $plugin->getExports()->queue($form, $criteria, $technical, (int)Craft::$app->getUser()->getId());
+            $this->setSuccessFlash(Craft::t('basin', 'Your export of {count, number} submissions is being prepared. It’ll be ready to download here shortly.', ['count' => $total]));
+            return $this->redirect(UrlHelper::cpUrl("basin/forms/$form->uuid/submissions", $this->listParams($criteria, 1)));
+        }
+
+        $out = fopen('php://temp/maxmemory:8388608', 'w+b');
+        try {
+            $plugin->getExports()->build($form, $criteria, $technical, $out);
+        } catch (ApiException $e) {
+            fclose($out);
+            return $this->asFailure(Craft::t('basin', 'Couldn’t reach Basin: {error}', ['error' => $e->getMessage()]));
+        }
+        $size = ftell($out);
+        rewind($out);
+
+        return $this->response->sendStreamAsFile($out, CsvExport::filename($form->name, $criteria['tab'], date('Y-m-d')), [
+            'mimeType' => 'text/csv',
+            'inline' => false,
+            'fileSize' => $size,
+        ]);
+    }
+
+    /**
+     * Downloads a finished export. Only the user who asked for it can, and
+     * it's deleted once sent.
+     */
+    public function actionDownloadExport(string $exportId): Response
+    {
+        $this->requirePermission('basin-exportSubmissions');
+        $exports = Plugin::getInstance()->getExports();
+        $token = $exportId;
+        $meta = $this->requireExport($token);
+        if ($meta['status'] !== 'ready' || !is_file($exports->csvPath($token))) {
+            throw new NotFoundHttpException(Craft::t('basin', 'That export isn’t ready, or has already been downloaded.'));
+        }
+
+        $this->response->on(Response::EVENT_AFTER_SEND, fn() => $exports->delete($token));
+        return $this->response->sendFile($exports->csvPath($token), $meta['filename'], [
+            'mimeType' => 'text/csv',
+            'inline' => false,
+        ]);
+    }
+
+    /** Status of a queued export, for polling. */
+    public function actionExportStatus(string $exportId): Response
+    {
+        // Not `token`, which Craft reserves for its own tokens.
+        $this->requireAcceptsJson();
+        $meta = $this->requireExport($exportId);
+        return $this->asJson([
+            'status' => $meta['status'],
+            'progress' => $meta['progress'],
+        ]);
+    }
+
+    public function actionDeleteExport(): Response
+    {
+        $this->requirePostRequest();
+        $token = (string)$this->request->getRequiredBodyParam('exportId');
+        $this->requireExport($token);
+        Plugin::getInstance()->getExports()->delete($token);
+        return $this->asSuccess(Craft::t('basin', 'Export removed.'));
+    }
+
+    private function requireExport(string $token): array
+    {
+        if (!preg_match('/^[a-f0-9]{32}$/', $token)) {
+            throw new NotFoundHttpException();
+        }
+        return Plugin::getInstance()->getExports()->getForUser($token, (int)Craft::$app->getUser()->getId())
+            ?? throw new NotFoundHttpException(Craft::t('basin', 'That export isn’t available. Exports are deleted once downloaded, or after 24 hours.'));
+    }
+
+    /**
      * Filters from the query string, validated.
      *
      * @return array{tab: string, query: string, order: ?string, dateFrom: ?string, dateTo: ?string}
@@ -226,15 +337,15 @@ class SubmissionsController extends BaseCpController
     private function criteria(): array
     {
         $date = function(string $name): ?string {
-            $value = (string)$this->request->getQueryParam($name, '');
+            $value = (string)$this->request->getParam($name, '');
             return preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) ? $value : null;
         };
-        $tab = (string)$this->request->getQueryParam('tab', 'inbox');
-        $order = (string)$this->request->getQueryParam('order', '');
+        $tab = (string)$this->request->getParam('tab', 'inbox');
+        $order = (string)$this->request->getParam('order', '');
 
         return [
             'tab' => array_key_exists($tab, Submissions::TABS) ? $tab : 'inbox',
-            'query' => mb_substr(trim((string)$this->request->getQueryParam('q', '')), 0, 200),
+            'query' => mb_substr(trim((string)$this->request->getParam('q', '')), 0, 200),
             'order' => in_array($order, ApiClient::SUBMISSION_ORDERS, true) ? $order : null,
             'dateFrom' => $date('from'),
             'dateTo' => $date('to'),

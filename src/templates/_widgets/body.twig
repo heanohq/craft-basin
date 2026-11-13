@@ -1,0 +1,45 @@
+{% if message is defined %}
+    <p class="light">{{ message }}</p>
+{% else %}
+    {% set listUrl = form ? url("basin/forms/#{form.uuid}/submissions") : url('basin/submissions') %}
+    <p style="margin-bottom: var(--s);">
+        <a href="{{ listUrl }}">
+            {{- '{count, plural, =1{1 unread} other{# unread}}'|t('basin', { count: recent.unread }) }}{{ recent.unreadCapped ? '+' -}}
+        </a>
+        {%- if recent.inbox is not null %}
+            <span class="light"> · {{ '{count, plural, =1{1 in the inbox} other{# in the inbox}}'|t('basin', { count: recent.inbox }) }}</span>
+        {%- endif %}
+    </p>
+
+    {% if submissions is empty %}
+        <p class="light">{{ 'No submissions yet.'|t('basin') }}</p>
+    {% else %}
+        <table class="data fullwidth">
+            <tbody>
+                {% for submission in submissions %}
+                    {% set tz = timezones[submission.formUuid] ?? 'UTC' %}
+                    <tr>
+                        <td style="white-space: nowrap; vertical-align: top;" class="light">{{ submission.dateCreated ? submission.dateCreated|datetime('short', timezone=tz) }}</td>
+                        <td style="word-break: break-word;">
+                            {% if submission.formUuid %}
+                                <a href="{{ submission.cpUrl }}"{{ submission.read ? '' : ' style="font-weight: bold;"'|raw }}>{{ submission.email ?? 'Submission {id}'|t('basin', { id: submission.id }) }}</a>
+                            {% else %}
+                                {{ submission.email ?? submission.id }}
+                            {% endif %}
+                            {% if not form and submission.formName %}<span class="light"> · {{ submission.formName }}</span>{% endif %}
+                            {% set preview = submission.preview(2) %}
+                            {% if preview|length %}
+                                <div class="light smalltext">{% for name, value in preview %}{{ value|length > 60 ? value|slice(0, 60) ~ '…' : value }}{% if not loop.last %} · {% endif %}{% endfor %}</div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    <p class="smalltext light" style="margin-top: var(--s);">
+        {{ 'Updated every 2 minutes.'|t('basin') }}
+        <a href="{{ actionUrl('basin/submissions/refresh-recent') }}">{{ 'Refresh'|t('basin') }}</a>
+    </p>
+{% endif %}

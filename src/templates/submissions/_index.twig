@@ -19,12 +19,91 @@
 
 {% block actionButton %}
     {% if form %}
-        <a class="btn" href="{{ form.cpUrl }}">{{ 'Form details'|t('basin') }}</a>
+        <div class="flex" style="gap: var(--xs);">
+            {% if canExport ?? false %}
+                <form method="post" accept-charset="UTF-8" id="basin-export-form">
+                    {{ csrfInput() }}
+                    {{ actionInput('basin/submissions/export') }}
+                    {{ hiddenInput('formUuid', form.uuid) }}
+                    {% for name, value in listParams %}{{ hiddenInput(name, value) }}{% endfor %}
+                    {{ hiddenInput('technical', '0') }}
+                </form>
+                <button type="button" class="btn menubtn" data-icon="download" aria-controls="basin-export-menu" data-disclosure-trigger>{{ 'Export'|t('basin') }}</button>
+                <div id="basin-export-menu" class="menu menu--disclosure">
+                    <ul>
+                        <li><button type="button" class="menu-item" data-basin-export-technical="0">{{ 'Export CSV'|t('basin') }}</button></li>
+                        <li><button type="button" class="menu-item" data-basin-export-technical="1">{{ 'Export CSV with IP address, browser and referrer'|t('basin') }}</button></li>
+                    </ul>
+                </div>
+                {% js %}
+                    // The menu may be moved out of the form, so submit it from here.
+                    document.querySelectorAll('[data-basin-export-technical]').forEach((button) => {
+                        button.addEventListener('click', () => {
+                            const form = document.getElementById('basin-export-form');
+                            form.elements.technical.value = button.dataset.basinExportTechnical;
+                            form.submit();
+                        });
+                    });
+                {% endjs %}
+            {% endif %}
+            <a class="btn" href="{{ form.cpUrl }}">{{ 'Form details'|t('basin') }}</a>
+        </div>
     {% endif %}
 {% endblock %}
 
 {% block content %}
     {% include 'basin/_includes/state' %}
+
+    {% for export in exports ?? [] %}
+        <blockquote class="note{{ export.status == 'failed' ? ' warning' }}" style="margin-bottom: var(--m);" data-basin-export="{{ export.token }}" data-status="{{ export.status }}">
+            <div class="flex" style="gap: var(--s); align-items: center; flex-wrap: wrap;">
+                <span>
+                    {% if export.status == 'pending' %}
+                        {{ 'Your export is being prepared ({percent}%).'|t('basin', { percent: (export.progress * 100)|round }) }}
+                    {% elseif export.status == 'ready' %}
+                        {{ 'Your export of {count, plural, =1{1 submission} other{# submissions}} is ready.'|t('basin', { count: export.rows }) }}
+                        <span class="light">{{ 'It’s deleted once downloaded, or after 24 hours.'|t('basin') }}</span>
+                    {% else %}
+                        {{ 'Your export failed: {error}'|t('basin', { error: export.error }) }}
+                    {% endif %}
+                </span>
+                {% if export.status == 'ready' %}
+                    <a class="btn small submit" data-icon="download" href="{{ url("basin/exports/#{export.token}") }}">{{ 'Download'|t('basin') }}</a>
+                {% endif %}
+                {% if export.status != 'pending' %}
+                    <form method="post" accept-charset="UTF-8" style="display: inline;">
+                        {{ csrfInput() }}
+                        {{ actionInput('basin/submissions/delete-export') }}
+                        {{ redirectInput(url("basin/forms/#{form.uuid}/submissions", listParams)) }}
+                        {{ hiddenInput('exportId', export.token) }}
+                        <button type="submit" class="btn small">{{ 'Dismiss'|t('basin') }}</button>
+                    </form>
+                {% endif %}
+            </div>
+        </blockquote>
+    {% endfor %}
+    {% if (exports ?? [])|filter(e => e.status == 'pending')|length %}
+        {% js %}
+            (() => {
+                const pending = [...document.querySelectorAll('[data-basin-export][data-status="pending"]')];
+                const poll = async () => {
+                    for (const el of pending) {
+                        try {
+                            const { data } = await Craft.sendActionRequest('GET', 'basin/submissions/export-status', { params: { exportId: el.dataset.basinExport } });
+                            if (data.status !== 'pending') {
+                                location.reload();
+                                return;
+                            }
+                        } catch (e) {
+                            return;
+                        }
+                    }
+                    setTimeout(poll, 3000);
+                };
+                setTimeout(poll, 3000);
+            })();
+        {% endjs %}
+    {% endif %}
 
     {% if state == 'ready' and basinForms is empty and not error %}
         <div class="zilch basin-empty">

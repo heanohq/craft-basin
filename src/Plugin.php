@@ -9,7 +9,9 @@ use craft\events\RegisterCacheOptionsEvent;
 use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
+use craft\services\Dashboard;
 use craft\services\Fields;
+use craft\services\Gc;
 use craft\services\UserPermissions;
 use craft\web\Response;
 use craft\web\TemplateResponseFormatter;
@@ -20,11 +22,13 @@ use craft\web\UrlManager;
 use heano\basin\fields\BasinFormField;
 use heano\basin\models\Settings;
 use heano\basin\services\Api;
+use heano\basin\services\Exports;
 use heano\basin\services\FormIssues;
 use heano\basin\services\Forms;
 use heano\basin\services\SpamProtection;
 use heano\basin\services\Submissions;
 use heano\basin\variables\BasinVariable;
+use heano\basin\widgets\SubmissionsWidget;
 use Throwable;
 use yii\base\Event;
 
@@ -36,6 +40,7 @@ use yii\base\Event;
  * @property-read Submissions $submissions
  * @property-read FormIssues $formIssues
  * @property-read SpamProtection $spamProtection
+ * @property-read Exports $exports
  * @method Settings getSettings()
  * @method static Plugin getInstance()
  */
@@ -54,6 +59,7 @@ class Plugin extends BasePlugin
                 'submissions' => Submissions::class,
                 'formIssues' => FormIssues::class,
                 'spamProtection' => SpamProtection::class,
+                'exports' => Exports::class,
             ],
         ];
     }
@@ -71,6 +77,15 @@ class Plugin extends BasePlugin
 
         Event::on(CraftVariable::class, CraftVariable::EVENT_INIT, function(Event $event) {
             $event->sender->set('basin', BasinVariable::class);
+        });
+
+        // Expired CSV exports are deleted with Craft's garbage collection (spec §8).
+        Event::on(Dashboard::class, Dashboard::EVENT_REGISTER_WIDGET_TYPES, function(RegisterComponentTypesEvent $event) {
+            $event->types[] = SubmissionsWidget::class;
+        });
+
+        Event::on(Gc::class, Gc::EVENT_RUN, function() {
+            $this->getExports()->gc();
         });
 
         Event::on(Fields::class, Fields::EVENT_REGISTER_FIELD_TYPES, function(RegisterComponentTypesEvent $event) {
@@ -117,6 +132,11 @@ class Plugin extends BasePlugin
         return $this->get('spamProtection');
     }
 
+    public function getExports(): Exports
+    {
+        return $this->get('exports');
+    }
+
     public function getCpNavItem(): ?array
     {
         $item = parent::getCpNavItem();
@@ -127,6 +147,16 @@ class Plugin extends BasePlugin
         ];
         if (Craft::$app->getUser()->checkPermission('basin-viewSubmissions')) {
             $subNav['submissions'] = ['label' => Craft::t('basin', 'Submissions'), 'url' => 'basin/submissions'];
+            // Unread count (spec §15). Never lets Basin break the CP nav.
+            try {
+                $unread = $this->getSubmissions()->getUnreadCount();
+            } catch (Throwable) {
+                $unread = null;
+            }
+            if ($unread) {
+                $item['badgeCount'] = $unread;
+                $subNav['submissions']['badgeCount'] = $unread;
+            }
         }
         if (Craft::$app->getUser()->getIsAdmin()) {
             $subNav['settings'] = ['label' => Craft::t('basin', 'Settings'), 'url' => 'basin/settings'];
@@ -222,6 +252,7 @@ class Plugin extends BasePlugin
             $event->rules['basin/forms/<uuid:[A-Za-z0-9]+>/submissions'] = 'basin/submissions/index';
             $event->rules['basin/forms/<uuid:[A-Za-z0-9]+>/submissions/<id:\d+>'] = 'basin/submissions/view';
             $event->rules['basin/forms/<uuid:[A-Za-z0-9]+>/submissions/<id:\d+>/attachments/<attachmentId:\d+>'] = 'basin/submissions/download';
+            $event->rules['basin/exports/<exportId:[a-f0-9]{32}>'] = 'basin/submissions/download-export';
             $event->rules['basin/settings'] = 'basin/settings/index';
         });
     }
