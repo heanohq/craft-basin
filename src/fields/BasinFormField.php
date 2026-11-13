@@ -9,6 +9,7 @@ use craft\helpers\Cp;
 use craft\helpers\Html;
 use GraphQL\Type\Definition\Type;
 use heano\basin\api\exceptions\ApiException;
+use heano\basin\gql\BasinGql;
 use heano\basin\models\BasinForm;
 use heano\basin\Plugin;
 use heano\basin\services\FormIssues;
@@ -221,14 +222,15 @@ class BasinFormField extends Field
     }
 
     /**
-     * The form's UUID for now; the full `BasinForm` type comes with GraphQL support.
+     * The selected form as a `BasinForm`, or null if none is selected or it's
+     * no longer in the linked project (spec §12.3).
      */
     public function getContentGqlType(): Type|array
     {
         return [
             'name' => $this->handle,
-            'type' => Type::string(),
-            'resolve' => fn($source) => ($v = $source->getFieldValue($this->handle)) instanceof BasinForm ? $v->uuid : null,
+            'type' => BasinGql::formType(),
+            'resolve' => fn($source) => ($v = $source->getFieldValue($this->handle)) instanceof BasinForm ? $v : null,
         ];
     }
 

@@ -27,6 +27,7 @@
 - reCAPTCHA version per form, set on the form’s page, or in templates with `data-basin-recaptcha="v2"` on the `<form>` or `form.captcha({ version: 'v2' })`. Forms using v2 and v3 can share a page.
 - “Manage form settings” permission for adding Form Studio embed codes and choosing a form’s reCAPTCHA version. These are saved in the database, not project config, so they can be changed in production. Settings for a form that has been gone from Basin for 30 days are removed.
 - “Change in Basin” link next to a form’s spam protection.
+- GraphQL: `basinForms` and `basinForm(uuid:)` queries, enabled per schema with “Query Basin forms”, and Basin Form fields return the form. Forms expose only what a front end needs: name, endpoint URL, AJAX and redirect settings, Form Studio script and the spam protection to render.
 - Unread count badge on the Basin menu item and Submissions subnav item.
 - User permissions: “View submissions and submission counts”, “Manage submissions”, “Export submissions” and (when deletion is allowed) “Permanently delete submissions”. Submission counts are hidden from users without “View submissions”.
 - If Basin can’t be reached, the Control Panel shows the last known list of forms.

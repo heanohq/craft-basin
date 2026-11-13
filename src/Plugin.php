@@ -7,25 +7,29 @@ use craft\base\Model;
 use craft\base\Plugin as BasePlugin;
 use craft\events\RegisterCacheOptionsEvent;
 use craft\events\RegisterComponentTypesEvent;
+use craft\events\RegisterGqlQueriesEvent;
+use craft\events\RegisterGqlSchemaComponentsEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
+use craft\helpers\UrlHelper;
 use craft\services\Dashboard;
 use craft\services\Fields;
 use craft\services\Gc;
+use craft\services\Gql;
 use craft\services\UserPermissions;
+use craft\utilities\ClearCaches;
 use craft\web\Response;
 use craft\web\TemplateResponseFormatter;
 use craft\web\twig\variables\CraftVariable;
-use craft\helpers\UrlHelper;
-use craft\utilities\ClearCaches;
 use craft\web\UrlManager;
 use heano\basin\fields\BasinFormField;
+use heano\basin\gql\BasinGql;
 use heano\basin\models\Settings;
 use heano\basin\services\Api;
 use heano\basin\services\Exports;
 use heano\basin\services\FormIssues;
-use heano\basin\services\FormSettings;
 use heano\basin\services\Forms;
+use heano\basin\services\FormSettings;
 use heano\basin\services\SpamProtection;
 use heano\basin\services\Submissions;
 use heano\basin\variables\BasinVariable;
@@ -102,6 +106,17 @@ class Plugin extends BasePlugin
                 'heading' => Craft::t('basin', 'Basin'),
                 'permissions' => self::permissions($this->getSettings()->allowDeletion),
             ];
+        });
+
+        Event::on(Gql::class, Gql::EVENT_REGISTER_GQL_QUERIES, function(RegisterGqlQueriesEvent $event) {
+            $event->queries = array_merge($event->queries, BasinGql::queries());
+        });
+        Event::on(Gql::class, Gql::EVENT_REGISTER_GQL_SCHEMA_COMPONENTS, function(RegisterGqlSchemaComponentsEvent $event) {
+            $event->queries[Craft::t('basin', 'Basin')] = BasinGql::schemaComponents();
+        });
+        // Site-wide spam settings appear in GraphQL results, which Craft caches.
+        Event::on(self::class, self::EVENT_AFTER_SAVE_SETTINGS, function() {
+            Craft::$app->getGql()->invalidateCaches();
         });
 
         Event::on(ClearCaches::class, ClearCaches::EVENT_REGISTER_TAG_OPTIONS, function(RegisterCacheOptionsEvent $event) {

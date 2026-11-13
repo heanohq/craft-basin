@@ -90,6 +90,12 @@ class Forms extends Component
                 $rows = $copy['rows'];
             }
             if (!$this->isStale) {
+                // GraphQL results include form data and Craft caches them, so
+                // clear them when the forms changed in Basin.
+                $previous = $cache->get($this->copyKey($projectId));
+                if (($previous['rows'] ?? null) !== $rows) {
+                    Craft::$app->getGql()->invalidateCaches();
+                }
                 $cache->set($key, $rows, $settings->cacheDuration, new TagDependency(['tags' => [Api::CACHE_TAG, self::CACHE_TAG]]));
                 // Kept with no expiry and no tag, so the front end keeps working
                 // through a Basin outage (spec §12.4). Holds no submission data.
@@ -149,6 +155,24 @@ class Forms extends Component
     }
 
     /**
+     * Every form, for the front end (Twig, GraphQL). Never throws.
+     *
+     * @return BasinForm[]
+     */
+    public function listForFrontEnd(): array
+    {
+        if (!$this->isConfigured()) {
+            return [];
+        }
+        try {
+            return array_values($this->getForms());
+        } catch (ApiException $e) {
+            Craft::warning('Couldn’t list Basin forms: ' . $e->getMessage(), 'basin');
+            return [];
+        }
+    }
+
+    /**
      * @throws ApiException
      */
     public function getFormByUuid(string $uuid): ?BasinForm
@@ -192,6 +216,7 @@ class Forms extends Component
     {
         Plugin::getInstance()->getFormSettings()->save($uuid, $values);
         $this->forms = null;
+        Craft::$app->getGql()->invalidateCaches();
     }
 
     /**

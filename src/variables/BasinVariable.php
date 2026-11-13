@@ -2,7 +2,6 @@
 
 namespace heano\basin\variables;
 
-use heano\basin\api\exceptions\ApiException;
 use heano\basin\models\BasinForm;
 use heano\basin\Plugin;
 use heano\basin\services\FormIssues;
@@ -28,15 +27,6 @@ class BasinVariable
      */
     public function forms(): array
     {
-        $forms = Plugin::getInstance()->getForms();
-        if (!$forms->isConfigured()) {
-            return [];
-        }
-        try {
-            return array_values($forms->getForms());
-        } catch (ApiException $e) {
-            \Craft::warning('Couldn’t list Basin forms: ' . $e->getMessage(), 'basin');
-            return [];
-        }
+        return Plugin::getInstance()->getForms()->listForFrontEnd();
     }
 }
