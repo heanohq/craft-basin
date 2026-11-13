@@ -7,6 +7,7 @@ use heano\basin\api\exceptions\ApiException;
 use heano\basin\helpers\StudioEmbed;
 use heano\basin\models\BasinForm;
 use heano\basin\Plugin;
+use heano\basin\services\FormSettings;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
@@ -72,8 +73,7 @@ class FormsController extends BaseCpController
             'form' => $form,
             'studioStatus' => $studioStatus,
             'embedInput' => $embedInput,
-            'canEditStudio' => $this->canEditStudio(),
-            'canEditRecaptcha' => $this->canEditSetting('recaptchaVersions'),
+            'canManage' => FormSettings::canManage(),
             'staleSince' => $plugin->getForms()->getStaleSince(),
         ]);
     }
@@ -81,16 +81,12 @@ class FormsController extends BaseCpController
     public function actionSaveStudioEmbed(): ?Response
     {
         $this->requirePostRequest();
-        $this->requireAdmin();
+        $this->requirePermission(Plugin::PERMISSION_MANAGE_FORMS);
 
         $plugin = Plugin::getInstance();
         $form = $this->requireForm((string)$this->request->getRequiredBodyParam('formUuid'));
         $input = (string)$this->request->getBodyParam('embed', '');
         $fail = fn(string $message) => $this->asFailure($message, routeParams: ['embedInput' => $input]);
-
-        if (!$this->canEditStudio()) {
-            return $fail(Craft::t('basin', 'Form Studio embed codes are being set in `config/basin.php`.'));
-        }
 
         $parsed = StudioEmbed::parse($input);
         if ($parsed === null) {
@@ -116,12 +112,9 @@ class FormsController extends BaseCpController
     public function actionRemoveStudioEmbed(): ?Response
     {
         $this->requirePostRequest();
-        $this->requireAdmin();
+        $this->requirePermission(Plugin::PERMISSION_MANAGE_FORMS);
 
         $form = $this->requireForm((string)$this->request->getRequiredBodyParam('formUuid'));
-        if (!$this->canEditStudio()) {
-            return $this->asFailure(Craft::t('basin', 'Form Studio embed codes are being set in `config/basin.php`.'));
-        }
 
         Plugin::getInstance()->getForms()->saveHostedFormId($form->uuid, null);
 
@@ -131,33 +124,15 @@ class FormsController extends BaseCpController
     public function actionSaveRecaptchaVersion(): ?Response
     {
         $this->requirePostRequest();
-        $this->requireAdmin();
+        $this->requirePermission(Plugin::PERMISSION_MANAGE_FORMS);
 
         $form = $this->requireForm((string)$this->request->getRequiredBodyParam('formUuid'));
-        if (!$this->canEditSetting('recaptchaVersions')) {
-            return $this->asFailure(Craft::t('basin', 'reCAPTCHA versions are being set in `config/basin.php`.'));
-        }
 
         $version = $this->request->getBodyParam('recaptchaVersion');
         $version = in_array($version, ['v2', 'v3'], true) ? $version : null;
         Plugin::getInstance()->getForms()->saveRecaptchaVersion($form->uuid, $version);
 
         return $this->asSuccess(Craft::t('basin', 'reCAPTCHA version saved.'));
-    }
-
-    private function canEditStudio(): bool
-    {
-        return $this->canEditSetting('studioForms');
-    }
-
-    /**
-     * Whether the current user can change a per-form setting stored in project config.
-     */
-    private function canEditSetting(string $setting): bool
-    {
-        return Craft::$app->getUser()->getIsAdmin()
-            && Craft::$app->getConfig()->getGeneral()->allowAdminChanges
-            && !in_array($setting, Plugin::getInstance()->getConfigOverrides(), true);
     }
 
     /**

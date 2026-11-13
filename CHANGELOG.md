@@ -8,7 +8,7 @@
 - “Basin data” option in Utilities → Clear Caches.
 - Forms screen listing every form in the linked Basin project, with type, spam protection, inbox and spam counts, endpoint URL and search.
 - Form page with the endpoint URL, settings summary, ready-to-paste template code and an “Open in Basin” link.
-- Form Studio forms: admins can paste a form’s embed code once so templates can output it. Embed codes are checked with Basin before saving, and a warning shows if a saved one stops working.
+- Form Studio forms: paste a form’s embed code once so templates can output it. Embed codes are checked with Basin before saving, and a warning shows if a saved one stops working.
 - Submissions screen for each form, with Inbox, Spam and Trash tabs, search, date range and sorting. Dates are shown in the form’s timezone, and unread submissions are in bold.
 - Submission page with every field, attachments, location, page, referrer and browser, plus previous/next links. Opening a submission marks it as read in Basin.
 - Mark submissions as read, unread, spam or not spam, move them to the trash and restore them, one at a time or in bulk. Large bulk actions run in the queue.
@@ -25,6 +25,8 @@
 - Basin Submissions dashboard widget showing unread and inbox counts and the latest submissions, for one form or the whole project.
 - Unread count on the Basin menu item, which can be turned off in the settings.
 - reCAPTCHA version per form, set on the form’s page, or in templates with `data-basin-recaptcha="v2"` on the `<form>` or `form.captcha({ version: 'v2' })`. Forms using v2 and v3 can share a page.
+- “Manage form settings” permission for adding Form Studio embed codes and choosing a form’s reCAPTCHA version. These are saved in the database, not project config, so they can be changed in production. Settings for a form that has been gone from Basin for 30 days are removed.
+- “Change in Basin” link next to a form’s spam protection.
 - Unread count badge on the Basin menu item and Submissions subnav item.
 - User permissions: “View submissions and submission counts”, “Manage submissions”, “Export submissions” and (when deletion is allowed) “Permanently delete submissions”. Submission counts are hidden from users without “View submissions”.
 - If Basin can’t be reached, the Control Panel shows the last known list of forms.

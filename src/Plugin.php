@@ -24,6 +24,7 @@ use heano\basin\models\Settings;
 use heano\basin\services\Api;
 use heano\basin\services\Exports;
 use heano\basin\services\FormIssues;
+use heano\basin\services\FormSettings;
 use heano\basin\services\Forms;
 use heano\basin\services\SpamProtection;
 use heano\basin\services\Submissions;
@@ -46,7 +47,9 @@ use yii\base\Event;
  */
 class Plugin extends BasePlugin
 {
-    public string $schemaVersion = '1.0.1';
+    public const PERMISSION_MANAGE_FORMS = 'basin-manageForms';
+
+    public string $schemaVersion = '1.0.2';
     public bool $hasCpSettings = true;
     public bool $hasCpSection = true;
 
@@ -56,6 +59,7 @@ class Plugin extends BasePlugin
             'components' => [
                 'api' => Api::class,
                 'forms' => Forms::class,
+                'formSettings' => FormSettings::class,
                 'submissions' => Submissions::class,
                 'formIssues' => FormIssues::class,
                 'spamProtection' => SpamProtection::class,
@@ -86,6 +90,7 @@ class Plugin extends BasePlugin
 
         Event::on(Gc::class, Gc::EVENT_RUN, function() {
             $this->getExports()->gc();
+            $this->getFormSettings()->gc();
         });
 
         Event::on(Fields::class, Fields::EVENT_REGISTER_FIELD_TYPES, function(RegisterComponentTypesEvent $event) {
@@ -115,6 +120,11 @@ class Plugin extends BasePlugin
     public function getForms(): Forms
     {
         return $this->get('forms');
+    }
+
+    public function getFormSettings(): FormSettings
+    {
+        return $this->get('formSettings');
     }
 
     public function getSubmissions(): Submissions
@@ -188,6 +198,9 @@ class Plugin extends BasePlugin
      */
     public static function permissions(bool $allowDeletion): array
     {
+        $manageForms = [
+            self::PERMISSION_MANAGE_FORMS => ['label' => Craft::t('basin', 'Manage form settings (Form Studio embed codes, reCAPTCHA version)')],
+        ];
         $nested = [
             'basin-manageSubmissions' => ['label' => Craft::t('basin', 'Manage submissions (mark as read, spam or trash)')],
             'basin-exportSubmissions' => ['label' => Craft::t('basin', 'Export submissions')],
@@ -196,7 +209,7 @@ class Plugin extends BasePlugin
             $nested['basin-deleteSubmissions'] = ['label' => Craft::t('basin', 'Permanently delete submissions')];
         }
 
-        return [
+        return $manageForms + [
             'basin-viewSubmissions' => [
                 'label' => Craft::t('basin', 'View submissions and submission counts'),
                 'nested' => $nested,

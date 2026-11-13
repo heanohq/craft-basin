@@ -5,7 +5,6 @@ namespace heano\basin\models;
 use Craft;
 use craft\base\Model;
 use craft\helpers\App;
-use heano\basin\helpers\StudioEmbed;
 
 /**
  * Basin plugin settings (stored in project config; spec §5).
@@ -55,21 +54,6 @@ class Settings extends Model
     /** Custom label for the main CP nav item. Blank = "Basin". */
     public string $navLabel = '';
 
-    /**
-     * Form Studio hosted IDs, keyed by form UUID (spec §10.3). Saved from the
-     * form's CP page, because Basin's API doesn't expose them.
-     *
-     * @var array<string, string>
-     */
-    public array $studioForms = [];
-
-    /**
-     * Per-form reCAPTCHA versions, keyed by form UUID, overriding
-     * `recaptchaVersion`. Saved from the form's CP page.
-     *
-     * @var array<string, 'v2'|'v3'>
-     */
-    public array $recaptchaVersions = [];
 
     protected function defineRules(): array
     {
@@ -83,43 +67,7 @@ class Settings extends Model
             [['allowDeletion', 'trackMissingForms', 'autoProtect', 'showUnreadBadge'], 'boolean'],
             ['recaptchaVersion', 'in', 'range' => ['v3', 'v2']],
             [['recaptchaV3SiteKey', 'recaptchaV2SiteKey', 'hcaptchaSiteKey'], 'match', 'pattern' => '/^[A-Za-z0-9_\-]{10,100}$/'],
-            ['studioForms', 'validateStudioForms'],
-            ['recaptchaVersions', 'validateRecaptchaVersions'],
         ];
-    }
-
-    public function validateStudioForms(string $attribute): void
-    {
-        foreach ($this->$attribute as $uuid => $hostedId) {
-            // PHP turns all-digit keys into ints, so cast rather than type-check.
-            if (!is_string($hostedId) || !StudioEmbed::isValidHostedId((string)$uuid) || !StudioEmbed::isValidHostedId($hostedId)) {
-                $this->addError($attribute, Craft::t('basin', 'Invalid Form Studio embed settings.'));
-                return;
-            }
-        }
-    }
-
-    public function validateRecaptchaVersions(string $attribute): void
-    {
-        foreach ($this->$attribute as $uuid => $version) {
-            if (!StudioEmbed::isValidHostedId((string)$uuid) || !in_array($version, ['v2', 'v3'], true)) {
-                $this->addError($attribute, Craft::t('basin', 'Invalid reCAPTCHA version settings.'));
-                return;
-            }
-        }
-    }
-
-    /** A form's own reCAPTCHA version, or null to use the site default. */
-    public function getFormRecaptchaVersion(string $uuid): ?string
-    {
-        $version = $this->recaptchaVersions[$uuid] ?? null;
-        return in_array($version, ['v2', 'v3'], true) ? $version : null;
-    }
-
-    public function getHostedFormId(string $uuid): ?string
-    {
-        $id = $this->studioForms[$uuid] ?? null;
-        return is_string($id) && $id !== '' ? $id : null;
     }
 
     /**

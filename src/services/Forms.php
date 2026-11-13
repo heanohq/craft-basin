@@ -4,7 +4,6 @@ namespace heano\basin\services;
 
 use Craft;
 use craft\base\Component;
-use craft\helpers\ProjectConfig as ProjectConfigHelper;
 use heano\basin\api\exceptions\ApiException;
 use heano\basin\api\exceptions\ApiUnavailableException;
 use heano\basin\helpers\StudioEmbed;
@@ -98,13 +97,14 @@ class Forms extends Component
             }
         }
 
+        $formSettings = $plugin->getFormSettings();
         $forms = [];
         foreach ($rows as $row) {
             if (!isset($row['id'], $row['uuid'])) {
                 continue;
             }
-            $form = BasinForm::fromApi($row, $settings->getHostedFormId((string)$row['uuid']));
-            $form->recaptchaVersion = $settings->getFormRecaptchaVersion($form->uuid);
+            $form = BasinForm::fromApi($row, $formSettings->getHostedFormId((string)$row['uuid']));
+            $form->recaptchaVersion = $formSettings->getRecaptchaVersion($form->uuid);
             $form->detectedHostedId = $this->getDetectedHostedId($form->uuid);
             $forms[$form->uuid] = $form;
         }
@@ -170,11 +170,11 @@ class Forms extends Component
     }
 
     /**
-     * Saves (or with null, removes) a form's Studio hosted ID in project config.
+     * Saves (or with null, removes) a form's Studio hosted ID.
      */
     public function saveHostedFormId(string $uuid, ?string $hostedId): void
     {
-        $this->saveFormSetting('studioForms', $uuid, $hostedId);
+        $this->saveFormSetting($uuid, ['hostedFormId' => $hostedId]);
         if ($hostedId !== null) {
             Plugin::getInstance()->getFormIssues()->clear($uuid, FormIssues::REASON_NO_EMBED);
         }
@@ -185,32 +185,12 @@ class Forms extends Component
      */
     public function saveRecaptchaVersion(string $uuid, ?string $version): void
     {
-        $this->saveFormSetting('recaptchaVersions', $uuid, $version);
+        $this->saveFormSetting($uuid, ['recaptchaVersion' => $version]);
     }
 
-    /**
-     * Sets one form's entry in a per-form settings map, in project config.
-     */
-    private function saveFormSetting(string $setting, string $uuid, ?string $value): void
+    private function saveFormSetting(string $uuid, array $values): void
     {
-        $plugin = Plugin::getInstance();
-
-        // Go through savePluginSettings (like the settings screen) so Craft
-        // stores the array in the same packed format either way. Start from
-        // project config, not the config-file-merged settings.
-        $stored = ProjectConfigHelper::unpackAssociativeArrays(
-            (array)(Craft::$app->getProjectConfig()->get("plugins.$plugin->handle.settings") ?? [])
-        );
-        $map = (array)($stored[$setting] ?? []);
-        if ($value === null) {
-            unset($map[$uuid]);
-        } else {
-            $map[$uuid] = $value;
-        }
-        $stored[$setting] = $map;
-
-        Craft::$app->getPlugins()->savePluginSettings($plugin, $stored);
-        $plugin->getSettings()->$setting = $map;
+        Plugin::getInstance()->getFormSettings()->save($uuid, $values);
         $this->forms = null;
     }
 
@@ -260,7 +240,7 @@ class Forms extends Component
      */
     public function rememberDetectedHostedId(string $uuid, string $hostedId): void
     {
-        if (Plugin::getInstance()->getSettings()->getHostedFormId($uuid) === $hostedId) {
+        if (Plugin::getInstance()->getFormSettings()->getHostedFormId($uuid) === $hostedId) {
             return;
         }
         Craft::$app->getCache()->set('basin:studio-detected:' . $uuid, $hostedId);
@@ -275,7 +255,7 @@ class Forms extends Component
         if (!is_string($detected) || !StudioEmbed::isValidHostedId($detected)) {
             return null;
         }
-        return Plugin::getInstance()->getSettings()->getHostedFormId($uuid) === $detected ? null : $detected;
+        return Plugin::getInstance()->getFormSettings()->getHostedFormId($uuid) === $detected ? null : $detected;
     }
 
     public function invalidateCaches(): void
