@@ -1,0 +1,90 @@
+{% extends '_layouts/cp' %}
+{% import '_includes/forms' as forms %}
+
+{% set title = 'Forms'|t('basin') %}
+{% set selectedSubnavItem = 'forms' %}
+{% set crumbs = [
+    { label: settings.getNavLabel(), url: url('basin') },
+] %}
+
+{% block content %}
+    {% include 'basin/_includes/state' %}
+
+    {% if project %}
+        <p class="light">
+            {{ 'Forms in the Basin project “{name}”.'|t('basin', { name: project.name }) }}
+            {% if currentUser.admin %}<a href="{{ url('basin/settings') }}">{{ 'Change project'|t('basin') }}</a>{% endif %}
+        </p>
+    {% endif %}
+
+    {% if state == 'ready' and (basinForms|length or not error) %}
+        {% if basinForms is empty %}
+            <div class="zilch basin-empty">
+                <p>{{ 'There are no forms in this Basin project yet.'|t('basin') }}</p>
+                <p class="light">{{ 'Forms created in, or moved to, “{name}” in Basin appear here automatically.'|t('basin', { name: project.name ?? '' }) }}</p>
+            </div>
+        {% else %}
+            <div style="margin: var(--m) 0 var(--l)">
+                    {{ forms.text({
+                        id: 'basin-form-search',
+                        type: 'search',
+                        placeholder: 'Search forms'|t('basin'),
+                        class: 'fullwidth',
+                        inputAttributes: { aria: { label: 'Search forms'|t('basin') } },
+                    }) }}
+            </div>
+
+            <div>
+                <table id="basin-forms" class="data fullwidth">
+                    <thead>
+                        <tr>
+                            <th scope="col">{{ 'Name'|t('basin') }}</th>
+                            <th scope="col">{{ 'Type'|t('basin') }}</th>
+                            <th scope="col">{{ 'Spam protection'|t('basin') }}</th>
+                            {% if canViewCounts %}
+                                <th scope="col" class="thin">{{ 'Inbox'|t('basin') }}</th>
+                                <th scope="col" class="thin">{{ 'Spam'|t('basin') }}</th>
+                            {% endif %}
+                            <th scope="col">{{ 'Updated'|t('basin') }}</th>
+                            <th scope="col">{{ 'Endpoint'|t('basin') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for form in basinForms %}
+                            <tr data-name="{{ form.name|lower }}">
+                                <th scope="row"><a href="{{ form.cpUrl }}">{{ form.name }}</a></th>
+                                <td>{% include 'basin/forms/_type' with { studioStatus: (brokenStudio[form.uuid] ?? false) ? 'broken' : null } %}</td>
+                                <td>{% include 'basin/forms/_spam' %}</td>
+                                {% if canViewCounts %}
+                                    <td class="thin">{{ form.inboxCount|number }}</td>
+                                    <td class="thin">{{ form.spamCount|number }}</td>
+                                {% endif %}
+                                <td>{{ form.dateUpdated ? form.dateUpdated|timestamp('short') }}</td>
+                                <td>{{ forms.copytext({ value: form.action, class: 'code' }) }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p id="basin-no-results" class="zilch hidden">{{ 'No forms match your search.'|t('basin') }}</p>
+
+            {% js %}
+                (() => {
+                    const input = document.getElementById('basin-form-search');
+                    const rows = document.querySelectorAll('#basin-forms tbody tr');
+                    const none = document.getElementById('basin-no-results');
+                    input.addEventListener('input', () => {
+                        const q = input.value.trim().toLowerCase();
+                        let shown = 0;
+                        rows.forEach(row => {
+                            const match = row.dataset.name.includes(q);
+                            row.classList.toggle('hidden', !match);
+                            shown += match ? 1 : 0;
+                        });
+                        none.classList.toggle('hidden', shown > 0);
+                    });
+                })();
+            {% endjs %}
+        {% endif %}
+    {% endif %}
+{% endblock %}

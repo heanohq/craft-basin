@@ -153,3 +153,32 @@ it('never includes the API key in exception messages', function(int $status) {
     }
     $this->fail('Expected an ApiException');
 })->with([401, 404, 422, 500]);
+
+it('lists a project’s forms using project_id', function() {
+    $history = [];
+    $fixture = fixture('forms');
+    $projectId = $fixture['forms'][0]['project_id'];
+    $result = basinClient([json(200, $fixture)], $history)->listForms($projectId);
+
+    parse_str($history[0]['request']->getUri()->getQuery(), $query);
+    expect($history[0]['request']->getUri()->getPath())->toBe('/api/v1/forms')
+        ->and($query)->toBe(['project_id' => (string)$projectId, 'page' => '1'])
+        ->and(array_column($result->items, 'name'))->toBe(['Alpha form 1', 'Alpha form 2']);
+});
+
+it('drops forms from other projects', function() {
+    $rows = [['id' => 1, 'project_id' => 5], ['id' => 2, 'project_id' => 6]];
+    $result = basinClient([json(200, ['forms' => $rows, 'meta' => ['count' => 2, 'page' => 1, 'per_page' => 100]])])->listForms(5);
+    expect(array_column($result->items, 'id'))->toBe([1]);
+});
+
+it('strips turnstile_secret from forms', function() {
+    $form = ['id' => 1, 'project_id' => 5, 'turnstile_site_key' => 'site', 'turnstile_secret' => 'TOPSECRET'];
+    $client = basinClient([
+        json(200, ['forms' => [$form], 'meta' => []]),
+        json(200, $form),
+    ]);
+    expect($client->listForms(5)->items[0])->not->toHaveKey('turnstile_secret')
+        ->toHaveKey('turnstile_site_key')
+        ->and($client->getForm(1))->not->toHaveKey('turnstile_secret');
+});

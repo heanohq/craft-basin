@@ -3,6 +3,7 @@
 namespace heano\basin\controllers;
 
 use Craft;
+use craft\helpers\ProjectConfig as ProjectConfigHelper;
 use craft\web\Controller;
 use heano\basin\models\Project;
 use heano\basin\models\Settings;
@@ -71,7 +72,9 @@ class SettingsController extends Controller
         // values), and only apply posted values for settings that aren't
         // overridden in config/basin.php. Otherwise overrides would be baked
         // into project config.
-        $stored = (array)(Craft::$app->getProjectConfig()->get("plugins.$plugin->handle.settings") ?? []);
+        $stored = ProjectConfigHelper::unpackAssociativeArrays(
+            (array)(Craft::$app->getProjectConfig()->get("plugins.$plugin->handle.settings") ?? [])
+        );
         $overrides = $plugin->getConfigOverrides();
         $incoming = [
             'apiKey' => (string)($posted['apiKey'] ?? ''),

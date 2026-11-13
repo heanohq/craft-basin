@@ -1,0 +1,11 @@
+{# Form type label (spec §10.3). Expects: form, and optionally studioStatus. #}
+{% if form.isStudioForm %}
+    {% if (studioStatus ?? null) == 'broken' %}
+        <span class="warning" data-icon="alert" aria-hidden="true"></span>
+        {{ 'Form Studio: embed code no longer works'|t('basin') }}
+    {% else %}
+        {{ 'Form Studio'|t('basin') }}
+    {% endif %}
+{% else %}
+    {{ 'Endpoint'|t('basin') }}
+{% endif %}

@@ -5,6 +5,7 @@ namespace heano\basin\models;
 use Craft;
 use craft\base\Model;
 use craft\helpers\App;
+use heano\basin\helpers\StudioEmbed;
 
 /**
  * Basin plugin settings (stored in project config; spec §5).
@@ -32,6 +33,14 @@ class Settings extends Model
     /** Custom label for the main CP nav item. Blank = "Basin". */
     public string $navLabel = '';
 
+    /**
+     * Form Studio hosted IDs, keyed by form UUID (spec §10.3). Saved from the
+     * form's CP page, because Basin's API doesn't expose them.
+     *
+     * @var array<string, string>
+     */
+    public array $studioForms = [];
+
     protected function defineRules(): array
     {
         return [
@@ -42,7 +51,25 @@ class Settings extends Model
             ['navLabel', 'string', 'max' => 60],
             ['cacheDuration', 'integer', 'min' => 0],
             [['allowDeletion', 'trackMissingForms'], 'boolean'],
+            ['studioForms', 'validateStudioForms'],
         ];
+    }
+
+    public function validateStudioForms(string $attribute): void
+    {
+        foreach ($this->$attribute as $uuid => $hostedId) {
+            // PHP turns all-digit keys into ints, so cast rather than type-check.
+            if (!is_string($hostedId) || !StudioEmbed::isValidHostedId((string)$uuid) || !StudioEmbed::isValidHostedId($hostedId)) {
+                $this->addError($attribute, Craft::t('basin', 'Invalid Form Studio embed settings.'));
+                return;
+            }
+        }
+    }
+
+    public function getHostedFormId(string $uuid): ?string
+    {
+        $id = $this->studioForms[$uuid] ?? null;
+        return is_string($id) && $id !== '' ? $id : null;
     }
 
     /**

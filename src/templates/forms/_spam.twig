@@ -1,0 +1,13 @@
+{# Spam protection summary. Expects: form. #}
+{% set captchaLabels = {
+    recaptcha: 'reCAPTCHA'|t('basin'),
+    hcaptcha: 'hCaptcha'|t('basin'),
+    turnstile: 'Turnstile'|t('basin'),
+} %}
+{% set parts = [] %}
+{% if form.captcha %}{% set parts = parts|push(captchaLabels[form.captcha]) %}{% endif %}
+{% if form.honeypotField %}{% set parts = parts|push('Honeypot ({name})'|t('basin', { name: form.honeypotField })) %}{% endif %}
+{% if form.hasTurnstileProblem %}
+    <span class="warning" data-icon="alert" title="{{ 'Turnstile is required, but no site key is set in Basin, so every submission will fail.'|t('basin') }}"></span>
+{% endif %}
+{% if parts %}{{ parts|join(', ') }}{% else %}<span class="light">{{ 'None'|t('basin') }}</span>{% endif %}

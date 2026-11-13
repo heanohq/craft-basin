@@ -60,6 +60,47 @@ final class ApiClient
     }
 
     /**
+     * Forms in one project. Filtered with `project_id`, which is exact (`query`
+     * is a loose text search). Rows from other projects are dropped as well,
+     * in case the filter is ever ignored.
+     *
+     * @throws ApiException
+     */
+    public function listForms(int $projectId, int $page = 1): ListPage
+    {
+        $result = $this->normaliseList($this->get('forms', ['project_id' => $projectId, 'page' => $page]), $page);
+        $items = [];
+        foreach ($result->items as $form) {
+            if ((int)($form['project_id'] ?? 0) === $projectId) {
+                $items[] = $this->sanitiseForm($form);
+            }
+        }
+        return new ListPage($items, $result->page, $result->perPage, $result->total, $result->meta);
+    }
+
+    /**
+     * @return array<string, mixed>
+     * @throws ApiException
+     */
+    public function getForm(int $id): array
+    {
+        return $this->sanitiseForm($this->normaliseObject($this->get('forms/' . $id)));
+    }
+
+    /**
+     * Basin returns form secrets in plain text. Remove them before anything
+     * else sees the data, so they can't be cached, logged or rendered.
+     *
+     * @param array<string, mixed> $form
+     * @return array<string, mixed>
+     */
+    private function sanitiseForm(array $form): array
+    {
+        unset($form['turnstile_secret']);
+        return $form;
+    }
+
+    /**
      * @param array<string, scalar> $query
      * @throws ApiException
      */
