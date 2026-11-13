@@ -1,0 +1,119 @@
+<?php
+
+use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Handler\MockHandler;
+use GuzzleHttp\HandlerStack;
+use GuzzleHttp\Middleware;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
+use heano\basin\api\ApiClient;
+use heano\basin\api\exceptions\ApiException;
+use heano\basin\api\exceptions\ApiUnavailableException;
+use heano\basin\api\exceptions\AuthException;
+use heano\basin\api\exceptions\NotFoundException;
+use heano\basin\api\exceptions\RateLimitException;
+use heano\basin\api\exceptions\ValidationException;
+
+/**
+ * Builds an ApiClient backed by queued mock responses, recording requests.
+ *
+ * @param array<int, Response|Throwable> $responses
+ * @param array<int, array{request: Request}> $history
+ */
+function basinClient(array $responses, array &$history = [], string $key = 'secret-key'): ApiClient
+{
+    $stack = HandlerStack::create(new MockHandler($responses));
+    $stack->push(Middleware::history($history));
+    return new ApiClient(new Client(['handler' => $stack]), $key, 5.0);
+}
+
+function json(int $status, mixed $body, array $headers = []): Response
+{
+    return new Response($status, ['Content-Type' => 'application/json'] + $headers, json_encode($body));
+}
+
+it('sends the key in the Authorization header, not the query string', function() {
+    $history = [];
+    basinClient([json(200, [])], $history)->listProjects();
+
+    $request = $history[0]['request'];
+    expect($request->getHeaderLine('Authorization'))->toBe('Token secret-key')
+        ->and($request->getHeaderLine('Accept'))->toBe('application/json')
+        ->and($request->getUri()->getQuery())->not->toContain('api_token')
+        ->and((string)$request->getUri())->toBe('https://usebasin.com/api/v1/projects?page=1');
+});
+
+it('accepts list responses as a bare array', function() {
+    $projects = basinClient([json(200, [['id' => 1, 'name' => 'Acme']])])->listProjects();
+    expect($projects)->toBe([['id' => 1, 'name' => 'Acme']]);
+});
+
+it('accepts list responses wrapped in a key', function(string $key) {
+    $projects = basinClient([json(200, [$key => [['id' => 2, 'name' => 'Beta']], 'meta' => ['page' => 1]])])->listProjects();
+    expect($projects)->toBe([['id' => 2, 'name' => 'Beta']]);
+})->with(['data', 'projects', 'items']);
+
+it('rejects unrecognised list formats', function() {
+    basinClient([json(200, ['unexpected' => true])])->listProjects();
+})->throws(ApiException::class, 'unexpected list format');
+
+it('gets a single project', function() {
+    $history = [];
+    $project = basinClient([json(200, ['id' => 7, 'name' => 'Acme'])], $history)->getProject(7);
+    expect($project['name'])->toBe('Acme')
+        ->and($history[0]['request']->getUri()->getPath())->toBe('/api/v1/projects/7');
+});
+
+it('maps HTTP errors to typed exceptions', function(int $status, string $class) {
+    expect(fn() => basinClient([json($status, [])])->listProjects())->toThrow($class);
+})->with([
+    [401, AuthException::class],
+    [403, AuthException::class],
+    [404, NotFoundException::class],
+    [422, ValidationException::class],
+    [429, RateLimitException::class],
+    [500, ApiUnavailableException::class],
+    [503, ApiUnavailableException::class],
+    [418, ApiException::class],
+]);
+
+it('uses Basin’s error message when there is one', function() {
+    expect(fn() => basinClient([json(422, ['errors' => ['name' => ['is too long']]])])->listProjects())
+        ->toThrow(ValidationException::class, 'is too long');
+});
+
+it('reads Retry-After on 429', function() {
+    try {
+        basinClient([json(429, [], ['Retry-After' => '30'])])->listProjects();
+    } catch (RateLimitException $e) {
+        expect($e->retryAfter)->toBe(30);
+        return;
+    }
+    $this->fail('Expected RateLimitException');
+});
+
+it('wraps connection failures', function() {
+    $error = new ConnectException('cURL error 6', new Request('GET', 'https://usebasin.com/api/v1/projects'));
+    basinClient([$error])->listProjects();
+})->throws(ApiUnavailableException::class, 'Could not connect to Basin.');
+
+it('rejects invalid JSON on success', function() {
+    basinClient([new Response(200, [], '<html>')])->listProjects();
+})->throws(ApiException::class, 'valid JSON');
+
+it('refuses to call the API without a key', function() {
+    $history = [];
+    expect(fn() => basinClient([json(200, [])], $history, '')->listProjects())->toThrow(AuthException::class);
+    expect($history)->toBeEmpty();
+});
+
+it('never includes the API key in exception messages', function(int $status) {
+    try {
+        basinClient([json($status, ['error' => 'bad'])], key: 'TOPSECRET123')->listProjects();
+    } catch (ApiException $e) {
+        expect($e->getMessage())->not->toContain('TOPSECRET123');
+        return;
+    }
+    $this->fail('Expected an ApiException');
+})->with([401, 404, 422, 500]);

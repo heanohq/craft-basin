@@ -1,0 +1,67 @@
+{
+  "name": "heano/craft-basin",
+  "description": "Use Basin (usebasin.com) forms in Craft CMS, and view and manage their submissions from the Control Panel.",
+  "type": "craft-plugin",
+  "keywords": [
+    "craft",
+    "cms",
+    "craftcms",
+    "craft-plugin",
+    "basin",
+    "forms",
+    "submissions"
+  ],
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "Heano",
+      "homepage": "https://heano.io"
+    }
+  ],
+  "support": {
+    "issues": "https://github.com/heanoio/craft-basin/issues",
+    "source": "https://github.com/heanoio/craft-basin"
+  },
+  "require": {
+    "php": "^8.2",
+    "craftcms/cms": "^5.0.0"
+  },
+  "require-dev": {
+    "guzzlehttp/guzzle": "^7.2",
+    "pestphp/pest": "^3.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "heano\\basin\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "heano\\basin\\tests\\": "tests/"
+    }
+  },
+  "extra": {
+    "handle": "basin",
+    "name": "Basin",
+    "developer": "Heano",
+    "developerUrl": "https://heano.io",
+    "documentationUrl": "https://heano.io/plugins/basin",
+    "class": "heano\\basin\\Plugin"
+  },
+  "scripts": {
+    "test": "pest"
+  },
+  "config": {
+    "sort-packages": true,
+    "platform": {
+      "php": "8.2"
+    },
+    "allow-plugins": {
+      "yiisoft/yii2-composer": true,
+      "craftcms/plugin-installer": true,
+      "pestphp/pest-plugin": true
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true
+}

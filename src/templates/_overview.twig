@@ -1,0 +1,42 @@
+{% extends '_layouts/cp' %}
+
+{% set title = settings.getNavLabel() %}
+{% set selectedSubnavItem = 'overview' %}
+
+{% block content %}
+    {% css %}
+      {# .zilch enlarges its text; keep buttons at Craft's standard size. #}
+      .basin-empty .btn { font-size: var(--font-size); }
+    {% endcss %}
+
+    {% if settings.getApiKey() is empty %}
+        <div class="zilch basin-empty">
+            <p>{{ 'Basin isn’t connected yet.'|t('basin') }}</p>
+            {% if currentUser.admin %}
+                <a class="btn submit" href="{{ url('basin/settings') }}">{{ 'Add your API key'|t('basin') }}</a>
+            {% else %}
+                <p>{{ 'Ask an admin to add a Basin API key in the plugin settings.'|t('basin') }}</p>
+            {% endif %}
+        </div>
+    {% elseif settings.getProjectId() is null %}
+        <div class="zilch basin-empty">
+            <p>{{ 'No Basin project is linked to this site yet.'|t('basin') }}</p>
+            {% if currentUser.admin %}
+                <a class="btn submit" href="{{ url('basin/settings') }}">{{ 'Choose a project'|t('basin') }}</a>
+            {% endif %}
+        </div>
+    {% elseif error %}
+        <blockquote class="note warning">
+            <p><strong>{{ 'Couldn’t reach Basin:'|t('basin') }}</strong> {{ error }}</p>
+        </blockquote>
+    {% elseif project is null %}
+        <blockquote class="note warning">
+            <p>{{ 'The linked Basin project (ID {id}) wasn’t found. It may have been deleted, or the API key may not have access to it.'|t('basin', { id: settings.getProjectId() }) }}</p>
+        </blockquote>
+    {% else %}
+        <div class="readable">
+            <p>{{ 'Connected to the Basin project “{name}”.'|t('basin', { name: project.name }) }}</p>
+            <p class="light">{{ 'Forms and submissions will appear here in a future update.'|t('basin') }}</p>
+        </div>
+    {% endif %}
+{% endblock %}

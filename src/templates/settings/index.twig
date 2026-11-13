@@ -1,0 +1,160 @@
+{% extends '_layouts/cp' %}
+{% import '_includes/forms' as forms %}
+
+{% set title = 'Settings'|t('basin') %}
+{% set selectedSubnavItem = 'settings' %}
+{% set fullPageForm = not readOnly %}
+{% set crumbs = [
+    { label: plugin.settings.getNavLabel(), url: url('basin') },
+] %}
+
+{# Value to show for a setting: the config-file value if overridden, else the model's. #}
+{% macro value(name, settings, overrides, plugin) %}{{ name in overrides ? attribute(plugin.settings, name) : attribute(settings, name) }}{% endmacro %}
+
+{% macro overrideWarning(name, overrides) %}
+    {%- if name in overrides -%}
+        {{ 'This is being overridden by the `{setting}` setting in `config/basin.php`.'|t('basin', { setting: name })|md(inlineOnly=true) }}
+    {%- endif -%}
+{% endmacro %}
+
+{% block content %}
+    {% if readOnly %}
+        <div class="readable" style="margin-bottom: var(--l)">
+            <blockquote class="note warning">
+                <p>{{ 'Settings can’t be changed on this environment because `allowAdminChanges` is disabled.'|t('basin')|md(inlineOnly=true) }}</p>
+            </blockquote>
+        </div>
+    {% endif %}
+
+    {{ actionInput('basin/settings/save') }}
+    {{ redirectInput('basin/settings') }}
+
+    <h2>{{ 'Connection'|t('basin') }}</h2>
+
+    {% if connectionError %}
+        <blockquote class="note warning" id="basin-connection-error">
+            <p><strong>{{ 'Couldn’t connect to Basin:'|t('basin') }}</strong> {{ connectionError }}</p>
+        </blockquote>
+    {% endif %}
+
+    {{ forms.autosuggestField({
+        label: 'Account API key'|t('basin'),
+        instructions: 'An environment variable holding your Basin **Account** API key, e.g. `$BASIN_API_KEY`. Create one under Account → API in Basin, then add it to your `.env` file. The key itself is never stored in project config.'|t('basin'),
+        id: 'basin-apiKey',
+        name: 'settings[apiKey]',
+        value: _self.value('apiKey', settings, overrides, plugin),
+        suggestEnvVars: true,
+        placeholder: '$BASIN_API_KEY',
+        required: true,
+        errors: settings.getErrors('apiKey'),
+        warning: _self.overrideWarning('apiKey', overrides),
+        disabled: readOnly or 'apiKey' in overrides,
+    }) }}
+
+    <div class="field" style="margin-top: calc(var(--s) * -1)">
+        <div class="flex">
+            <button type="button" class="btn" id="basin-test-connection">{{ 'Test connection'|t('basin') }}</button>
+            <div class="spinner hidden" id="basin-test-spinner"></div>
+            <div id="basin-test-result" role="status" aria-live="polite"></div>
+        </div>
+    </div>
+
+    {{ forms.autosuggestField({
+        label: 'Basin project'|t('basin'),
+        instructions: 'Every form in this project will be available on this site. Choose a project, or use an environment variable (e.g. `$BASIN_PROJECT_ID`) so staging and production can use different projects.'|t('basin'),
+        id: 'basin-projectId',
+        name: 'settings[projectId]',
+        value: _self.value('projectId', settings, overrides, plugin),
+        suggestions: projectSuggestions,
+        suggestEnvVars: true,
+        placeholder: projects is empty ? 'Save a working API key first'|t('basin') : 'Choose a project'|t('basin'),
+        tip: linkedProject ? 'Linked to “{name}”.'|t('basin', { name: linkedProject.name }) : null,
+        errors: settings.getErrors('projectId'),
+        warning: _self.overrideWarning('projectId', overrides),
+        disabled: readOnly or 'projectId' in overrides,
+    }) }}
+
+    <hr>
+    <h2>{{ 'Control Panel'|t('basin') }}</h2>
+
+    {{ forms.textField({
+        label: 'Menu label'|t('basin'),
+        instructions: 'How the plugin appears in the main Control Panel menu, e.g. “Forms”. Leave blank to use “Basin”.'|t('basin'),
+        id: 'basin-navLabel',
+        name: 'settings[navLabel]',
+        value: _self.value('navLabel', settings, overrides, plugin),
+        placeholder: 'Basin'|t('basin'),
+        maxlength: 60,
+        errors: settings.getErrors('navLabel'),
+        warning: _self.overrideWarning('navLabel', overrides),
+        disabled: readOnly or 'navLabel' in overrides,
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'Allow permanent deletion of submissions'|t('basin'),
+        instructions: 'When off, submissions can only be moved to trash. When on, users with the “Delete submissions” permission can permanently delete them from Basin. Deletion can’t be undone.'|t('basin'),
+        id: 'basin-allowDeletion',
+        name: 'settings[allowDeletion]',
+        on: _self.value('allowDeletion', settings, overrides, plugin)|trim == '1',
+        warning: _self.overrideWarning('allowDeletion', overrides),
+        disabled: readOnly or 'allowDeletion' in overrides,
+    }) }}
+
+    <hr>
+    <h2>{{ 'Advanced'|t('basin') }}</h2>
+
+    {{ forms.textField({
+        label: 'Cache duration'|t('basin'),
+        instructions: 'How long, in seconds, to cache forms and form details from Basin.'|t('basin'),
+        id: 'basin-cacheDuration',
+        name: 'settings[cacheDuration]',
+        type: 'number',
+        min: 0,
+        size: 8,
+        value: _self.value('cacheDuration', settings, overrides, plugin),
+        errors: settings.getErrors('cacheDuration'),
+        warning: _self.overrideWarning('cacheDuration', overrides),
+        disabled: readOnly or 'cacheDuration' in overrides,
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: 'Track missing forms'|t('basin'),
+        instructions: 'Warn in the Control Panel when templates or fields reference a form that isn’t in the linked project.'|t('basin'),
+        id: 'basin-trackMissingForms',
+        name: 'settings[trackMissingForms]',
+        on: _self.value('trackMissingForms', settings, overrides, plugin)|trim == '1',
+        warning: _self.overrideWarning('trackMissingForms', overrides),
+        disabled: readOnly or 'trackMissingForms' in overrides,
+    }) }}
+{% endblock %}
+
+{% js %}
+(() => {
+    const button = document.getElementById('basin-test-connection');
+    const spinner = document.getElementById('basin-test-spinner');
+    const result = document.getElementById('basin-test-result');
+    const input = document.querySelector('#basin-apiKey input, input#basin-apiKey');
+
+    const show = (ok, message) => {
+        result.className = ok ? 'success' : 'error';
+        result.textContent = message;
+    };
+
+    button.addEventListener('click', async () => {
+        button.disabled = true;
+        spinner.classList.remove('hidden');
+        result.textContent = '';
+        try {
+            const { data } = await Craft.sendActionRequest('POST', 'basin/settings/test-connection', {
+                data: { apiKey: input ? input.value : '' },
+            });
+            show(data.success, data.message);
+        } catch (e) {
+            show(false, e?.response?.data?.message || Craft.t('basin', 'Something went wrong.'));
+        } finally {
+            button.disabled = false;
+            spinner.classList.add('hidden');
+        }
+    });
+})();
+{% endjs %}
