@@ -60,7 +60,7 @@
                 {{ hiddenInput('formUuid', form.uuid) }}
                 {{ forms.textareaField({
                     label: 'Embed code'|t('basin'),
-                    instructions: 'In Form Studio, open the form’s embed options and copy the `<script>` tag. The script URL or the hosted form URL also work.'|t('basin'),
+                    instructions: 'In <a href="{url}" target="_blank" rel="noopener">Form Studio</a>, open the form’s embed options and copy the `<script>` tag. The script URL or the hosted form URL also work.'|t('basin', { url: form.studioDashboardUrl }),
                     id: 'basin-embed',
                     name: 'embed',
                     value: embedInput,

@@ -116,6 +116,15 @@ class BasinForm extends Model
         return sprintf(self::BASIN_FORM_URL, $this->id);
     }
 
+    /**
+     * The form's Form Studio page in Basin's dashboard. Studio's own numeric
+     * IDs aren't in the API, so this links to the form's list of Studio forms.
+     */
+    public function getStudioDashboardUrl(): string
+    {
+        return sprintf(self::BASIN_FORM_URL, $this->id) . '/hosted_forms';
+    }
+
     public function getCpUrl(): string
     {
         return UrlHelper::cpUrl('basin/forms/' . $this->uuid);
