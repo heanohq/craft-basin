@@ -85,8 +85,29 @@
         ? "{% set form = craft.basin.form(" ~ q ~ ") %}\n{% if form %}\n  {{ form.render() }}\n{% endif %}"
         : "{% set form = craft.basin.form(" ~ q ~ ") %}\n{% if form %}\n  <form action=\"{{ form.action }}\" method=\"post\">\n    <input type=\"email\" name=\"email\" required>\n    <textarea name=\"message\"></textarea>\n    <button type=\"submit\">Send</button>\n  </form>\n{% endif %}"
     %}
-    <p>{{ 'Spam protection that Basin requires for this form is added automatically.'|t('basin') }}</p>
-    <pre class="code" style="padding: var(--s) var(--m); background: var(--gray-050); border-radius: var(--small-border-radius); overflow-x: auto;"><code>{{ snippet }}</code></pre>
+    <div class="flex" style="justify-content: space-between; align-items: center; margin-bottom: var(--s);">
+        <p style="margin: 0;">{{ 'Spam protection that Basin requires for this form is added automatically.'|t('basin') }}</p>
+        <button type="button" id="basin-copy-snippet" class="btn small" data-icon="clipboard" aria-label="{{ 'Copy template code to clipboard'|t('basin') }}">{{ 'Copy'|t('basin') }}</button>
+    </div>
+    <pre class="code" style="margin: 0; padding: var(--s) var(--m); background: var(--gray-050); border-radius: var(--small-border-radius); overflow-x: auto;"><code id="basin-snippet">{{ snippet }}</code></pre>
+
+    {% js %}
+        document.getElementById('basin-copy-snippet').addEventListener('click', async (event) => {
+            const text = document.getElementById('basin-snippet').textContent;
+            try {
+                await navigator.clipboard.writeText(text);
+            } catch (e) {
+                // Fallback for browsers that block the async clipboard API.
+                const textarea = Object.assign(document.createElement('textarea'), { value: text });
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                textarea.remove();
+            }
+            Craft.cp.displayNotice(Craft.t('app', 'Copied to clipboard.'));
+            event.currentTarget.focus();
+        });
+    {% endjs %}
 {% endblock %}
 
 {% block details %}
