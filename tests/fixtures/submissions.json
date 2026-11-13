@@ -1,0 +1,154 @@
+{
+    "submissions": [
+        {
+            "id": 1001,
+            "email": "person2@example.com",
+            "source_url": null,
+            "source_host": null,
+            "source_path": null,
+            "source_query": null,
+            "source_fragment": null,
+            "payload_params": {
+                "Name": "Person 3",
+                "Email": "person2@example.com",
+                "Message": "spamtest123"
+            },
+            "form_id": 1004,
+            "spam": true,
+            "created_at": "2026-11-13T20:23:22.591Z",
+            "updated_at": "2026-11-13T20:23:41.698Z",
+            "read": true,
+            "trash": false,
+            "spam_reason": "submission_content_blacklisted",
+            "webhook_sent_at": null,
+            "ip": "203.0.113.10",
+            "referrer": null,
+            "user_agent": "Mozilla/5.0 (Test)",
+            "geocoded_country": "Unknown",
+            "geocoded_region": "Unknown",
+            "geocoded_city": "Unknown",
+            "attachments": [],
+            "form": {
+                "name": "Alpha form 1",
+                "uuid": "9ce4690dfbee"
+            }
+        },
+        {
+            "id": 1006,
+            "email": "person2@example.com",
+            "source_url": null,
+            "source_host": null,
+            "source_path": null,
+            "source_query": null,
+            "source_fragment": null,
+            "payload_params": {
+                "Name": "Person 3",
+                "Email": "person2@example.com"
+            },
+            "form_id": 1004,
+            "spam": false,
+            "created_at": "2026-11-13T20:20:29.763Z",
+            "updated_at": "2026-11-13T20:20:31.081Z",
+            "read": false,
+            "trash": false,
+            "spam_reason": null,
+            "webhook_sent_at": null,
+            "ip": "203.0.113.10",
+            "referrer": null,
+            "user_agent": "Mozilla/5.0 (Test)",
+            "geocoded_country": "United Kingdom",
+            "geocoded_region": "Testville",
+            "geocoded_city": "Testville",
+            "attachments": [],
+            "form": {
+                "name": "Alpha form 1",
+                "uuid": "9ce4690dfbee"
+            }
+        },
+        {
+            "id": 1007,
+            "email": "person8@example.com",
+            "source_url": null,
+            "source_host": null,
+            "source_path": null,
+            "source_query": null,
+            "source_fragment": null,
+            "payload_params": {
+                "Name": "Person 9",
+                "Email": "person8@example.com"
+            },
+            "form_id": 1004,
+            "spam": false,
+            "created_at": "2026-11-13T20:20:16.637Z",
+            "updated_at": "2026-11-13T20:20:18.492Z",
+            "read": false,
+            "trash": false,
+            "spam_reason": null,
+            "webhook_sent_at": null,
+            "ip": "203.0.113.10",
+            "referrer": null,
+            "user_agent": "Mozilla/5.0 (Test)",
+            "geocoded_country": "United Kingdom",
+            "geocoded_region": "Testville",
+            "geocoded_city": "Testville",
+            "attachments": [],
+            "form": {
+                "name": "Alpha form 1",
+                "uuid": "9ce4690dfbee"
+            }
+        },
+        {
+            "id": 1010,
+            "email": "person11@example.com",
+            "source_url": null,
+            "source_host": null,
+            "source_path": null,
+            "source_query": null,
+            "source_fragment": null,
+            "payload_params": {
+                "email": "person11@example.com",
+                "name": "Person 12",
+                "message": "Welcome to Basin!"
+            },
+            "form_id": 1004,
+            "spam": false,
+            "created_at": "2026-11-13T20:01:27.999Z",
+            "updated_at": "2026-11-13T20:32:52.974Z",
+            "read": false,
+            "trash": false,
+            "spam_reason": null,
+            "webhook_sent_at": null,
+            "ip": null,
+            "referrer": null,
+            "user_agent": null,
+            "geocoded_country": "Unknown",
+            "geocoded_region": "Unknown",
+            "geocoded_city": "Unknown",
+            "attachments": [
+                {
+                    "id": 1013,
+                    "name": "basin_logo.png",
+                    "form_name": null,
+                    "created_at": "2026-11-13T20:01:28.005Z",
+                    "file_size": 17610,
+                    "content_type": "image/png",
+                    "attachment_proxy_url": "https://usebasin.com/api/v1/attachments/21739c76445a0fac0423a72de7daef6731d8a5e9859b5a707c390244f67fdafa",
+                    "public_url": "https://usebasin.com/api/v1/attachments/730c945f6b0db3eac44bd3148e2d633807eef1f14211a2f67f3afa04fcd08ce4/public"
+                }
+            ],
+            "form": {
+                "name": "Alpha form 1",
+                "uuid": "9ce4690dfbee"
+            }
+        }
+    ],
+    "meta": {
+        "count": 4,
+        "inbox_count": 3,
+        "spam_count": 1,
+        "trash_count": 0,
+        "page": 1,
+        "per_page": 100,
+        "form_name": "Alpha form 1"
+    }
+}

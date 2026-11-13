@@ -8,6 +8,7 @@ use GuzzleHttp\Middleware;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use heano\basin\api\ApiClient;
+use heano\basin\api\ListPage;
 use heano\basin\api\exceptions\ApiException;
 use heano\basin\api\exceptions\ApiUnavailableException;
 use heano\basin\api\exceptions\AuthException;
@@ -44,15 +45,50 @@ it('sends the key in the Authorization header, not the query string', function()
         ->and((string)$request->getUri())->toBe('https://usebasin.com/api/v1/projects?page=1');
 });
 
+function fixture(string $name): array
+{
+    return json_decode(file_get_contents(__DIR__ . "/../fixtures/$name.json"), true, flags: JSON_THROW_ON_ERROR);
+}
+
+it('parses Basin’s real project list format', function() {
+    $result = basinClient([json(200, fixture('projects'))])->listProjects();
+    expect($result)->toBeInstanceOf(ListPage::class)
+        ->and(array_column($result->items, 'name'))->toBe(['My Starter Project', 'Alpha', 'Beta'])
+        ->and($result->page)->toBe(1)
+        ->and($result->perPage)->toBe(100)
+        ->and($result->total)->toBe(3)
+        ->and($result->hasMore())->toBeFalse();
+});
+
 it('accepts list responses as a bare array', function() {
-    $projects = basinClient([json(200, [['id' => 1, 'name' => 'Acme']])])->listProjects();
-    expect($projects)->toBe([['id' => 1, 'name' => 'Acme']]);
+    $result = basinClient([json(200, [['id' => 1, 'name' => 'Acme']])])->listProjects();
+    expect($result->items)->toBe([['id' => 1, 'name' => 'Acme']])
+        ->and($result->total)->toBeNull()
+        ->and($result->hasMore())->toBeTrue();
 });
 
 it('accepts list responses wrapped in a key', function(string $key) {
-    $projects = basinClient([json(200, [$key => [['id' => 2, 'name' => 'Beta']], 'meta' => ['page' => 1]])])->listProjects();
-    expect($projects)->toBe([['id' => 2, 'name' => 'Beta']]);
+    $result = basinClient([json(200, [$key => [['id' => 2, 'name' => 'Beta']], 'meta' => ['page' => 1]])])->listProjects();
+    expect($result->items)->toBe([['id' => 2, 'name' => 'Beta']]);
 })->with(['data', 'projects', 'items']);
+
+it('reads a string page number from meta', function() {
+    $result = basinClient([json(200, ['projects' => [['id' => 1]], 'meta' => ['count' => 150, 'page' => '2', 'per_page' => 100]])])->listProjects(2);
+    expect($result->page)->toBe(2)->and($result->hasMore())->toBeFalse();
+});
+
+it('knows when more pages remain', function() {
+    $result = basinClient([json(200, ['projects' => [['id' => 1]], 'meta' => ['count' => 150, 'page' => 1, 'per_page' => 100]])])->listProjects();
+    expect($result->hasMore())->toBeTrue();
+});
+
+it('treats an empty page as the last page', function() {
+    expect(basinClient([json(200, ['projects' => [], 'meta' => ['count' => 3, 'page' => 2, 'per_page' => 100]])])->listProjects(2)->hasMore())->toBeFalse();
+});
+
+it('parses Basin’s 404 error body', function() {
+    basinClient([json(404, ['error' => 'Not Found'])])->getProject(1);
+})->throws(NotFoundException::class, 'Not Found');
 
 it('rejects unrecognised list formats', function() {
     basinClient([json(200, ['unexpected' => true])])->listProjects();

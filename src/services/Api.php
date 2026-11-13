@@ -124,19 +124,22 @@ class Api extends Component
      */
     private function fetchAllProjects(ApiClient $client): array
     {
-        // Pagination metadata isn't documented (spec §18 #1), so keep requesting
-        // pages until one comes back empty or repeats the previous page.
+        // Basin returns 100 per page with a total in `meta.count`. The page cap
+        // and repeat check guard against a change in that behaviour.
         $projects = [];
         $previousIds = null;
         for ($page = 1; $page <= 50; $page++) {
-            $rows = $client->listProjects($page);
-            $ids = array_column($rows, 'id');
-            if (!$rows || $ids === $previousIds) {
+            $result = $client->listProjects($page);
+            $ids = array_column($result->items, 'id');
+            if ($ids === $previousIds) {
                 break;
             }
-            foreach ($rows as $row) {
+            foreach ($result->items as $row) {
                 $project = Project::fromApi($row);
                 $projects[$project->id] = $project;
+            }
+            if (!$result->hasMore()) {
+                break;
             }
             $previousIds = $ids;
         }

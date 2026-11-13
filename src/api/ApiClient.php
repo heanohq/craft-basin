@@ -29,10 +29,11 @@ final class ApiClient
     public const BASE_URI = 'https://usebasin.com/api/v1/';
 
     /**
-     * Keys Basin may wrap list responses in. The response shape isn't
-     * documented (spec §18 #1), so lists are normalised defensively.
+     * Keys Basin wraps list responses in (`{"projects": [...], "meta": {...}}`).
+     * A few generic keys and bare arrays are also accepted, in case the format
+     * changes; see spec §18.
      */
-    private const LIST_WRAPPER_KEYS = ['data', 'items', 'results', 'projects', 'forms', 'form_views', 'submissions'];
+    private const LIST_WRAPPER_KEYS = ['projects', 'forms', 'form_views', 'submissions', 'data', 'items', 'results'];
 
     public function __construct(
         private readonly ClientInterface $http,
@@ -42,12 +43,11 @@ final class ApiClient
     }
 
     /**
-     * @return array<int, array<string, mixed>>
      * @throws ApiException
      */
-    public function listProjects(int $page = 1): array
+    public function listProjects(int $page = 1): ListPage
     {
-        return $this->normaliseList($this->get('projects', ['page' => $page]));
+        return $this->normaliseList($this->get('projects', ['page' => $page]), $page);
     }
 
     /**
@@ -170,18 +170,17 @@ final class ApiClient
     }
 
     /**
-     * @return array<int, array<string, mixed>>
      * @throws ApiException
      */
-    private function normaliseList(mixed $data): array
+    private function normaliseList(mixed $data, int $page): ListPage
     {
         if (is_array($data) && array_is_list($data)) {
-            return array_values(array_filter($data, 'is_array'));
+            return new ListPage(array_values(array_filter($data, 'is_array')), $page);
         }
         if (is_array($data)) {
             foreach (self::LIST_WRAPPER_KEYS as $key) {
                 if (isset($data[$key]) && is_array($data[$key]) && array_is_list($data[$key])) {
-                    return array_values(array_filter($data[$key], 'is_array'));
+                    return ListPage::fromMeta(array_values(array_filter($data[$key], 'is_array')), $data['meta'] ?? null, $page);
                 }
             }
         }
