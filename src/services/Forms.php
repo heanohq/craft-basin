@@ -6,6 +6,7 @@ use Craft;
 use craft\base\Component;
 use craft\helpers\ProjectConfig as ProjectConfigHelper;
 use heano\basin\api\exceptions\ApiException;
+use heano\basin\api\exceptions\ApiUnavailableException;
 use heano\basin\helpers\StudioEmbed;
 use heano\basin\models\BasinForm;
 use heano\basin\Plugin;
@@ -22,6 +23,12 @@ class Forms extends Component
 {
     public const CACHE_TAG = 'basin:forms';
     private const STUDIO_CHECK_TTL = 86400;
+
+    /** Front-end requests never wait longer than this for Basin (spec §12.4). */
+    public float $siteTimeout = 3.0;
+
+    /** After a failed fetch, use the last-known-good copy for this long before retrying. */
+    public int $outageBackoff = 60;
 
     /** Whether the last {@see getForms()} result came from the last-known-good copy. */
     public bool $isStale = false;
@@ -63,8 +70,17 @@ class Forms extends Component
         $rows = $refresh ? false : $cache->get($key);
         if ($rows === false) {
             try {
+                // While Basin is down, don't make every page wait for a timeout.
+                $down = $refresh ? false : $cache->get($this->downKey($projectId));
+                if ($down !== false) {
+                    throw new ApiUnavailableException($down);
+                }
                 $rows = $this->fetchRows($projectId);
             } catch (ApiException $e) {
+                if ($down === false) {
+                    // Tagged, so Clear Caches or saving settings retries straight away.
+                    $cache->set($this->downKey($projectId), $e->getMessage(), $this->outageBackoff, new TagDependency(['tags' => [Api::CACHE_TAG]]));
+                }
                 $copy = $cache->get($this->copyKey($projectId));
                 if ($copy === false) {
                     throw $e;
@@ -94,6 +110,41 @@ class Forms extends Component
         uasort($forms, fn(BasinForm $a, BasinForm $b) => strnatcasecmp($a->name, $b->name));
 
         return $this->forms = $forms;
+    }
+
+    /**
+     * Whether an API key and project are set, so there's a forms list to check.
+     */
+    public function isConfigured(): bool
+    {
+        $settings = Plugin::getInstance()->getSettings();
+        return $settings->getApiKey() !== '' && $settings->getProjectId() !== null;
+    }
+
+    /**
+     * Looks up a form for the front end (Twig, fields, GraphQL). Never throws:
+     * if Basin can't be reached and there's no saved copy, it returns null.
+     *
+     * A form that isn't in a fresh list is recorded as missing (spec §13).
+     * Nothing is recorded when the list is a stale copy or unavailable,
+     * because then the form isn't known to be missing.
+     */
+    public function lookup(?string $uuid, string $source, ?string $url = null): ?BasinForm
+    {
+        $uuid = trim((string)$uuid);
+        if ($uuid === '' || !$this->isConfigured()) {
+            return null;
+        }
+        try {
+            $form = $this->getFormByUuid($uuid);
+        } catch (ApiException $e) {
+            Craft::warning("Couldn’t look up Basin form $uuid: " . $e->getMessage(), 'basin');
+            return null;
+        }
+        if ($form === null && !$this->isStale) {
+            Plugin::getInstance()->getFormIssues()->record($uuid, FormIssues::REASON_MISSING, $source, $url);
+        }
+        return $form;
     }
 
     /**
@@ -141,6 +192,9 @@ class Forms extends Component
         Craft::$app->getPlugins()->savePluginSettings($plugin, $stored);
         $plugin->getSettings()->studioForms = $studioForms;
         $this->forms = null;
+        if ($hostedId !== null) {
+            $plugin->getFormIssues()->clear($uuid, FormIssues::REASON_NO_EMBED);
+        }
     }
 
     /**
@@ -219,7 +273,9 @@ class Forms extends Component
      */
     private function fetchRows(int $projectId): array
     {
-        $client = Plugin::getInstance()->getApi()->getClient();
+        $request = Craft::$app->getRequest();
+        $timeout = !$request->getIsConsoleRequest() && $request->getIsSiteRequest() ? $this->siteTimeout : null;
+        $client = Plugin::getInstance()->getApi()->getClient(null, $timeout);
         $rows = [];
         $previousIds = null;
         for ($page = 1; $page <= 50; $page++) {
@@ -242,6 +298,11 @@ class Forms extends Component
     private function cacheKey(int $projectId): string
     {
         return 'basin:forms:' . $projectId . ':' . $this->keyHash();
+    }
+
+    private function downKey(int $projectId): string
+    {
+        return 'basin:forms-down:' . $projectId . ':' . $this->keyHash();
     }
 
     private function copyKey(int $projectId): string

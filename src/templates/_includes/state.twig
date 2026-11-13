@@ -36,3 +36,7 @@
         <p><strong>{{ 'Couldn’t reach Basin:'|t('basin') }}</strong> {{ error }}</p>
     </blockquote>
 {% endif %}
+
+{% if state == 'ready' and issues is defined and issues|length %}
+    {% include 'basin/_includes/issues' %}
+{% endif %}

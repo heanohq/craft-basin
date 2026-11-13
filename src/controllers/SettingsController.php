@@ -82,6 +82,8 @@ class SettingsController extends Controller
             'cacheDuration' => (int)($posted['cacheDuration'] ?? 300),
             'allowDeletion' => (bool)($posted['allowDeletion'] ?? false),
             'trackMissingForms' => (bool)($posted['trackMissingForms'] ?? false),
+            'autoProtect' => (bool)($posted['autoProtect'] ?? false),
+            'recaptchaVersion' => (string)($posted['recaptchaVersion'] ?? 'v3'),
             'navLabel' => (string)($posted['navLabel'] ?? ''),
         ];
         foreach ($overrides as $name) {

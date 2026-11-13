@@ -15,5 +15,11 @@
 - Permanently delete submissions from Basin, when deletion is allowed.
 - Attachments download through the Control Panel, so Basin’s public file links are never shown.
 - Forms whose submissions come from Form Studio but have no embed code saved are flagged, with a one-click option to use the detected embed code.
+- `craft.basin.form(uuid)` and `craft.basin.forms()` for templates. Lookups never wait more than 3 seconds for Basin and fall back to the last known list of forms.
+- `form.render()` outputs a Form Studio form. Without saved embed code it outputs only an HTML comment for visitors, plus a notice in devMode and previews.
+- Automatic spam protection: every Basin form on a front-end page gets the honeypot and CAPTCHA (reCAPTCHA v3 or v2, hCaptcha or Turnstile) that Basin requires for it, however the form was added, including hard-coded markup, `{% cache %}` blocks and forms added by JavaScript. Opt out per form with `data-basin-protect="false"`, or turn it off in the settings.
+- `form.honeypot()`, `form.captcha()` and `form.spamProtection()` for placing spam protection yourself.
+- Basin Form field type, with a setting to limit it to endpoint forms, Form Studio forms with embed code, or particular forms. A form that’s no longer in the project shows a warning and is kept until an editor changes it.
+- Warnings in the Control Panel when the site uses a form that isn’t in the linked project, or renders a Form Studio form without its embed code, with the page it was used on.
 - User permissions: “View submissions and submission counts”, “Manage submissions”, “Export submissions” and (when deletion is allowed) “Permanently delete submissions”. Submission counts are hidden from users without “View submissions”.
 - If Basin can’t be reached, the Control Panel shows the last known list of forms.

@@ -30,6 +30,25 @@ class Settings extends Model
     /** Whether to record references to forms that aren't in the linked project. */
     public bool $trackMissingForms = true;
 
+    /**
+     * Whether to add the CAPTCHA and honeypot each form requires to any Basin
+     * form on a front-end page (spec §10.4).
+     */
+    public bool $autoProtect = true;
+
+    /**
+     * Which reCAPTCHA to render for forms that require it. Basin's setting
+     * doesn't say, and accepts either with its own keys.
+     *
+     * @var 'v3'|'v2'
+     */
+    public string $recaptchaVersion = 'v3';
+
+    /** Basin's own CAPTCHA site keys. Only change these if Basin rotates them. */
+    public string $recaptchaV3SiteKey = '6Les66kUAAAAANyLrgkl7iuN4JUpNlB5upaMovI4';
+    public string $recaptchaV2SiteKey = '6Lew3SMUAAAAAJ82QoS7gqOTkRI_dhYrFy1f7Sqy';
+    public string $hcaptchaSiteKey = '7fe715a1-151f-4c63-b497-bd971974df05';
+
     /** Custom label for the main CP nav item. Blank = "Basin". */
     public string $navLabel = '';
 
@@ -50,7 +69,9 @@ class Settings extends Model
             ['projectId', 'validateProjectId'],
             ['navLabel', 'string', 'max' => 60],
             ['cacheDuration', 'integer', 'min' => 0],
-            [['allowDeletion', 'trackMissingForms'], 'boolean'],
+            [['allowDeletion', 'trackMissingForms', 'autoProtect'], 'boolean'],
+            ['recaptchaVersion', 'in', 'range' => ['v3', 'v2']],
+            [['recaptchaV3SiteKey', 'recaptchaV2SiteKey', 'hcaptchaSiteKey'], 'match', 'pattern' => '/^[A-Za-z0-9_\-]{10,100}$/'],
             ['studioForms', 'validateStudioForms'],
         ];
     }

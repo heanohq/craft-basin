@@ -101,6 +101,33 @@
     }) }}
 
     <hr>
+    <h2>{{ 'Front end'|t('basin') }}</h2>
+
+    {{ forms.lightswitchField({
+        label: 'Add spam protection automatically'|t('basin'),
+        instructions: 'Adds the CAPTCHA and honeypot that each form’s Basin settings require to every Basin form on your site, however the form was added to the template. Turn off to place them yourself with `form.captcha()` and `form.honeypot()`.'|t('basin'),
+        id: 'basin-autoProtect',
+        name: 'settings[autoProtect]',
+        on: _self.value('autoProtect', settings, overrides, plugin)|trim == '1',
+        warning: _self.overrideWarning('autoProtect', overrides),
+        disabled: readOnly or 'autoProtect' in overrides,
+    }) }}
+
+    {{ forms.selectField({
+        label: 'reCAPTCHA version'|t('basin'),
+        instructions: 'Which reCAPTCHA to show for forms that require it in Basin. v3 is invisible; v2 shows the “I’m not a robot” checkbox.'|t('basin'),
+        id: 'basin-recaptchaVersion',
+        name: 'settings[recaptchaVersion]',
+        options: [
+            { label: 'v3 (invisible)'|t('basin'), value: 'v3' },
+            { label: 'v2 (checkbox)'|t('basin'), value: 'v2' },
+        ],
+        value: _self.value('recaptchaVersion', settings, overrides, plugin)|trim,
+        warning: _self.overrideWarning('recaptchaVersion', overrides),
+        disabled: readOnly or 'recaptchaVersion' in overrides,
+    }) }}
+
+    <hr>
     <h2>{{ 'Advanced'|t('basin') }}</h2>
 
     {{ forms.textField({

@@ -2,11 +2,17 @@
 
 namespace heano\basin\models;
 
+use Craft;
 use craft\base\Model;
 use craft\helpers\DateTimeHelper;
+use craft\helpers\Html;
+use craft\helpers\Template;
 use craft\helpers\UrlHelper;
 use DateTime;
 use heano\basin\helpers\StudioEmbed;
+use heano\basin\Plugin;
+use heano\basin\services\FormIssues;
+use Twig\Markup;
 
 /**
  * A Basin form in the linked project (spec §6.3).
@@ -43,6 +49,9 @@ class BasinForm extends Model
 
     /** A hosted ID seen in this form's submissions that hasn't been saved. */
     public ?string $detectedHostedId = null;
+
+    /** A template called `render()` for this form without saved embed code. */
+    public bool $noEmbedReported = false;
 
     /**
      * @param array<string, mixed> $data A form from Basin's API.
@@ -117,7 +126,7 @@ class BasinForm extends Model
     /** A Studio form whose embed code hasn't been saved yet. */
     public function getNeedsEmbedCode(): bool
     {
-        return $this->hostedFormId === null && $this->detectedHostedId !== null;
+        return $this->hostedFormId === null && ($this->detectedHostedId !== null || $this->noEmbedReported);
     }
 
     /** Whether `render()` can output this form (its Studio embed code is saved). */
@@ -148,5 +157,71 @@ class BasinForm extends Model
     public function getCpUrl(): string
     {
         return UrlHelper::cpUrl('basin/forms/' . $this->uuid);
+    }
+
+    /**
+     * The form's public spam-protection settings (spec §10.4).
+     *
+     * @return array{captcha: ?string, siteKey: ?string, scriptUrl: ?string, recaptchaVersion: ?string, honeypotField: string}
+     */
+    public function getSpamProtection(): array
+    {
+        return Plugin::getInstance()->getSpamProtection()->config($this);
+    }
+
+    /** A hidden honeypot input using the form's honeypot field name. */
+    public function honeypot(array $attributes = []): Markup
+    {
+        return Template::raw(Plugin::getInstance()->getSpamProtection()->honeypotHtml($this, $attributes));
+    }
+
+    /** Where the form's CAPTCHA goes, if Basin requires one. */
+    public function captcha(array $attributes = []): Markup
+    {
+        return Template::raw(Plugin::getInstance()->getSpamProtection()->captchaHtml($this, $attributes));
+    }
+
+    /** The honeypot and CAPTCHA together. */
+    public function spamProtection(): Markup
+    {
+        $service = Plugin::getInstance()->getSpamProtection();
+        return Template::raw($service->honeypotHtml($this) . $service->captchaHtml($this));
+    }
+
+    /**
+     * Outputs a Form Studio form (spec §10.3). Always safe to output: without
+     * saved embed code, visitors get only an HTML comment, while devMode and
+     * previews show a notice to whoever can fix it.
+     */
+    public function render(): Markup
+    {
+        $url = $this->getStudioScriptUrl();
+        if ($url !== null) {
+            return Template::raw(Html::tag('script', '', ['src' => $url, 'async' => true]));
+        }
+
+        Plugin::getInstance()->getFormIssues()->record($this->uuid, FormIssues::REASON_NO_EMBED, FormIssues::SOURCE_TWIG);
+        Craft::warning("form.render() was called for Basin form $this->uuid, which has no Form Studio embed code saved.", 'basin');
+
+        $message = Craft::t('basin', '“{name}” can’t be shown because its Form Studio embed code hasn’t been added in the Control Panel.', ['name' => $this->name]);
+        $comment = '<!-- Basin: ' . str_replace(['--', '>'], ['–', '›'], $message) . ' -->';
+
+        $request = Craft::$app->getRequest();
+        $showNotice = Craft::$app->getConfig()->getGeneral()->devMode
+            || (!$request->getIsConsoleRequest() && $request->getIsPreview());
+        if (!$showNotice) {
+            return Template::raw($comment);
+        }
+
+        $link = '';
+        if (Craft::$app->getUser()->checkPermission('accessPlugin-basin')) {
+            $link = ' ' . Html::a(Craft::t('basin', 'Add it in the Control Panel'), $this->getCpUrl(), ['target' => '_blank', 'rel' => 'noopener']);
+        }
+        $notice = Html::tag('div', Html::encode($message) . $link, [
+            'role' => 'note',
+            'data-basin-notice' => true,
+            'style' => 'padding:1em;border:2px dashed #d97706;background:#fffbeb;color:#78350f;font:14px/1.5 system-ui,sans-serif;',
+        ]);
+        return Template::raw($comment . $notice);
     }
 }

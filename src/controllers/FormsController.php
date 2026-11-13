@@ -133,4 +133,15 @@ class FormsController extends BaseCpController
             && Craft::$app->getConfig()->getGeneral()->allowAdminChanges
             && !in_array('studioForms', Plugin::getInstance()->getConfigOverrides(), true);
     }
+
+    /**
+     * Dismisses a missing-form or missing-embed warning. It comes back if the
+     * form is requested again.
+     */
+    public function actionDismissIssue(): ?Response
+    {
+        $this->requirePostRequest();
+        Plugin::getInstance()->getFormIssues()->dismiss((int)$this->request->getRequiredBodyParam('id'));
+        return $this->asSuccess(Craft::t('basin', 'Warning dismissed.'));
+    }
 }

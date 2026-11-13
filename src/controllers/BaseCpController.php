@@ -51,9 +51,19 @@ abstract class BaseCpController extends Controller
             }
         }
 
+        $issues = [];
+        if ($state === 'ready') {
+            $forms = $plugin->getForms();
+            try {
+                $issues = $plugin->getFormIssues()->getActive($forms->getForms(), !$forms->isStale);
+            } catch (ApiException) {
+            }
+        }
+
         return [
             'settings' => $settings,
             'state' => $state,
+            'issues' => $issues,
             'project' => $project,
             'error' => $error,
             'canViewCounts' => Craft::$app->getUser()->checkPermission('basin-viewSubmissions'),

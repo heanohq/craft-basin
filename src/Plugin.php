@@ -6,16 +6,26 @@ use Craft;
 use craft\base\Model;
 use craft\base\Plugin as BasePlugin;
 use craft\events\RegisterCacheOptionsEvent;
+use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
+use craft\services\Fields;
 use craft\services\UserPermissions;
+use craft\web\Response;
+use craft\web\TemplateResponseFormatter;
+use craft\web\twig\variables\CraftVariable;
 use craft\helpers\UrlHelper;
 use craft\utilities\ClearCaches;
 use craft\web\UrlManager;
+use heano\basin\fields\BasinFormField;
 use heano\basin\models\Settings;
 use heano\basin\services\Api;
+use heano\basin\services\FormIssues;
 use heano\basin\services\Forms;
+use heano\basin\services\SpamProtection;
 use heano\basin\services\Submissions;
+use heano\basin\variables\BasinVariable;
+use Throwable;
 use yii\base\Event;
 
 /**
@@ -24,12 +34,14 @@ use yii\base\Event;
  * @property-read Api $api
  * @property-read Forms $forms
  * @property-read Submissions $submissions
+ * @property-read FormIssues $formIssues
+ * @property-read SpamProtection $spamProtection
  * @method Settings getSettings()
  * @method static Plugin getInstance()
  */
 class Plugin extends BasePlugin
 {
-    public string $schemaVersion = '1.0.0';
+    public string $schemaVersion = '1.0.1';
     public bool $hasCpSettings = true;
     public bool $hasCpSection = true;
 
@@ -40,6 +52,8 @@ class Plugin extends BasePlugin
                 'api' => Api::class,
                 'forms' => Forms::class,
                 'submissions' => Submissions::class,
+                'formIssues' => FormIssues::class,
+                'spamProtection' => SpamProtection::class,
             ],
         ];
     }
@@ -48,9 +62,20 @@ class Plugin extends BasePlugin
     {
         parent::init();
 
-        if (Craft::$app->getRequest()->getIsCpRequest()) {
+        $request = Craft::$app->getRequest();
+        if ($request->getIsCpRequest()) {
             $this->registerCpRoutes();
+        } elseif ($request->getIsSiteRequest()) {
+            $this->registerSpamProtection();
         }
+
+        Event::on(CraftVariable::class, CraftVariable::EVENT_INIT, function(Event $event) {
+            $event->sender->set('basin', BasinVariable::class);
+        });
+
+        Event::on(Fields::class, Fields::EVENT_REGISTER_FIELD_TYPES, function(RegisterComponentTypesEvent $event) {
+            $event->types[] = BasinFormField::class;
+        });
 
         Event::on(UserPermissions::class, UserPermissions::EVENT_REGISTER_PERMISSIONS, function(RegisterUserPermissionsEvent $event) {
             $event->permissions[] = [
@@ -80,6 +105,16 @@ class Plugin extends BasePlugin
     public function getSubmissions(): Submissions
     {
         return $this->get('submissions');
+    }
+
+    public function getFormIssues(): FormIssues
+    {
+        return $this->get('formIssues');
+    }
+
+    public function getSpamProtection(): SpamProtection
+    {
+        return $this->get('spamProtection');
     }
 
     public function getCpNavItem(): ?array
@@ -140,6 +175,41 @@ class Plugin extends BasePlugin
     protected function createSettingsModel(): ?Model
     {
         return new Settings();
+    }
+
+    /**
+     * Adds each form's required spam protection to front-end HTML pages after
+     * they're rendered, so it works however the form got into the page,
+     * including `{% cache %}` and hard-coded markup (spec §10.4).
+     */
+    private function registerSpamProtection(): void
+    {
+        Event::on(Response::class, Response::EVENT_AFTER_PREPARE, function(Event $event) {
+            /** @var Response $response */
+            $response = $event->sender;
+            $request = Craft::$app->getRequest();
+            if (
+                // Template responses use their own format; the Content-Type
+                // check below rules out non-HTML templates (feeds, JSON).
+                !in_array($response->format, [Response::FORMAT_HTML, TemplateResponseFormatter::FORMAT], true) ||
+                $response->stream !== null ||
+                !is_string($response->content) ||
+                $response->getIsRedirection() ||
+                $request->getIsAjax()
+            ) {
+                return;
+            }
+            $type = $response->getHeaders()->get('Content-Type');
+            if ($type !== null && !str_starts_with(strtolower($type), 'text/html')) {
+                return;
+            }
+            try {
+                $response->content = $this->getSpamProtection()->processHtml($response->content);
+            } catch (Throwable $e) {
+                // Never break a page over spam protection.
+                Craft::error('Couldn’t add Basin spam protection: ' . $e->getMessage(), 'basin');
+            }
+        });
     }
 
     private function registerCpRoutes(): void
