@@ -13,11 +13,14 @@
 {% endblock %}
 
 {% block content %}
+    {% css %}
+        .note a[data-icon]::before { margin-inline-end: 0.3em; }
+    {% endcss %}
     {% include 'basin/_includes/state' with { state: 'ready' } %}
 
     {% if form.hasTurnstileProblem %}
         <blockquote class="note warning" style="margin-bottom: var(--m);">
-            <p>{{ 'This form requires Turnstile, but no Turnstile site key is set in Basin, so every submission will fail. Add your Cloudflare Turnstile keys in the form’s Spam settings in Basin.'|t('basin') }} <a href="{{ form.basinUrl }}" target="_blank" rel="noopener" data-icon="external">{{ 'Open in Basin'|t('basin') }}</a></p>
+            <p>{{ 'This form requires Turnstile, but no Turnstile site key is set in Basin, so every submission will fail. Add your Cloudflare Turnstile keys in the form’s spam settings in Basin.'|t('basin') }} <a href="{{ form.basinSpamUrl }}" target="_blank" rel="noopener" data-icon="external">{{ 'Open in Basin'|t('basin') }}</a></p>
         </blockquote>
     {% endif %}
 
@@ -84,7 +87,7 @@
                 {{ hiddenInput('formUuid', form.uuid) }}
                 {{ forms.textareaField({
                     label: 'Embed code'|t('basin'),
-                    instructions: 'In <a href="{url}" target="_blank" rel="noopener">Form Studio</a>, open the form’s embed options and copy the `<script>` tag. The script URL or the hosted form URL also work.'|t('basin', { url: form.studioDashboardUrl }),
+                    instructions: 'In <a href="{url}" target="_blank" rel="noopener">Form Studio</a>, open the form’s **Publish** tab and copy the `<script>` tag. The script URL or the hosted form URL also work.'|t('basin', { url: form.studioDashboardUrl }),
                     id: 'basin-embed',
                     name: 'embed',
                     value: embedInput,
@@ -173,9 +176,9 @@
         </div>
         <div class="data">
             <h5 class="heading">{{ 'Spam protection'|t('basin') }}</h5>
-            <div class="value">
-                {% include 'basin/forms/_spam' %}
-                <div><a href="{{ form.basinUrl }}" target="_blank" rel="noopener" class="smalltext" title="{{ 'In Basin, open the form’s Settings → Spam.'|t('basin') }}">{{ 'Change in Basin'|t('basin') }}</a></div>
+            <div class="value" style="flex-direction: column; align-items: flex-start;">
+                <div>{% include 'basin/forms/_spam' %}</div>
+                <div><a href="{{ form.basinSpamUrl }}" target="_blank" rel="noopener" class="smalltext">{{ 'Change in Basin'|t('basin') }}</a></div>
             </div>
         </div>
         {% if canViewCounts %}

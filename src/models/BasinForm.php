@@ -23,6 +23,7 @@ use Twig\Markup;
 class BasinForm extends Model
 {
     public const BASIN_FORM_URL = 'https://usebasin.com/app/forms/%d';
+    public const BASIN_SPAM_URL = 'https://usebasin.com/app/forms/%d/spam_settings/edit';
     public const ENDPOINT_URL = 'https://usebasin.com/f/%s';
 
     public int $id;
@@ -146,6 +147,22 @@ class BasinForm extends Model
     public function getBasinUrl(): string
     {
         return sprintf(self::BASIN_FORM_URL, $this->id);
+    }
+
+    /**
+     * The form's spam settings in Basin.
+     */
+    public function getBasinSpamUrl(): string
+    {
+        return sprintf(self::BASIN_SPAM_URL, $this->id);
+    }
+
+    /**
+     * The form's submissions in the Control Panel.
+     */
+    public function getSubmissionsCpUrl(?string $tab = null): string
+    {
+        return UrlHelper::cpUrl('basin/forms/' . $this->uuid . '/submissions', $tab && $tab !== 'inbox' ? ['tab' => $tab] : null);
     }
 
     /**

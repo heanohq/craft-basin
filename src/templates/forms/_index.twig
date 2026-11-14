@@ -10,13 +10,6 @@
 {% block content %}
     {% include 'basin/_includes/state' %}
 
-    {% if project %}
-        <p class="light">
-            {{ 'Forms in the Basin project “{name}”.'|t('basin', { name: project.name }) }}
-            {% if currentUser.admin %}<a href="{{ url('basin/settings') }}">{{ 'Change project'|t('basin') }}</a>{% endif %}
-        </p>
-    {% endif %}
-
     {% if state == 'ready' and (basinForms|length or not error) %}
         {% if basinForms is empty %}
             <div class="zilch basin-empty">
@@ -54,8 +47,8 @@
                                 <th scope="row"><a href="{{ form.cpUrl }}">{{ form.name }}</a></th>
                                 <td>{% include 'basin/forms/_spam' %}</td>
                                 {% if canViewCounts %}
-                                    <td class="thin">{{ form.inboxCount|number }}</td>
-                                    <td class="thin">{{ form.spamCount|number }}</td>
+                                    <td class="thin"><a href="{{ form.submissionsCpUrl }}">{{ form.inboxCount|number }}</a></td>
+                                    <td class="thin"><a href="{{ form.getSubmissionsCpUrl('spam') }}">{{ form.spamCount|number }}</a></td>
                                 {% endif %}
                                 <td>{{ form.dateUpdated ? form.dateUpdated|timestamp('short') }}</td>
                                 <td>{{ forms.copytext({ value: form.action, class: 'code' }) }}</td>
