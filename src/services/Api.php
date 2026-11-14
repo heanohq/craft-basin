@@ -4,17 +4,18 @@ namespace heano\basin\services;
 
 use Craft;
 use craft\base\Component;
-use GuzzleHttp\ClientInterface;
-use heano\basin\api\ApiClient;
-use heano\basin\api\exceptions\ApiException;
-use heano\basin\api\exceptions\NotFoundException;
+use GuzzleHttp\Psr7\HttpFactory;
+use Psr\Http\Client\ClientInterface;
+use Heano\Basin\Client as ApiClient;
+use Heano\Basin\Exception\ApiException;
+use Heano\Basin\Exception\NotFoundException;
 use heano\basin\models\Project;
 use heano\basin\Plugin;
 use yii\caching\TagDependency;
 
 /**
- * Craft-facing wrapper around {@see ApiClient}: builds the client from plugin
- * settings and caches reads (spec §4.3).
+ * Craft-facing wrapper around the basin-php client ({@see ApiClient}): builds
+ * the client from plugin settings and caches reads (spec §4.3).
  */
 class Api extends Component
 {
@@ -25,7 +26,8 @@ class Api extends Component
     public float $cpTimeout = 10.0;
 
     /**
-     * Optional HTTP client override, mainly for tests.
+     * Optional PSR-18 HTTP client override, mainly for tests. Timeouts are
+     * then up to that client.
      */
     public ?ClientInterface $httpClient = null;
 
@@ -41,11 +43,16 @@ class Api extends Component
         $timeout ??= $this->cpTimeout;
         $id = hash('sha256', $apiKey) . ':' . $timeout;
 
-        return $this->clients[$id] ??= new ApiClient(
-            $this->httpClient ?? Craft::createGuzzleClient(),
-            $apiKey,
-            $timeout,
-        );
+        if (!isset($this->clients[$id])) {
+            // basin-php leaves timeouts to the HTTP client.
+            $http = $this->httpClient ?? Craft::createGuzzleClient([
+                'timeout' => $timeout,
+                'connect_timeout' => min($timeout, 5.0),
+            ]);
+            $factory = new HttpFactory();
+            $this->clients[$id] = new ApiClient($apiKey, $http, $factory, $factory);
+        }
+        return $this->clients[$id];
     }
 
     /**

@@ -5,7 +5,7 @@ namespace heano\basin\services;
 use Craft;
 use craft\base\Component;
 use craft\helpers\Html;
-use heano\basin\api\exceptions\ApiException;
+use Heano\Basin\Exception\ApiException;
 use heano\basin\helpers\PageScanner;
 use heano\basin\models\BasinForm;
 use heano\basin\Plugin;

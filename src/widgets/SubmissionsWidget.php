@@ -4,7 +4,7 @@ namespace heano\basin\widgets;
 
 use Craft;
 use craft\base\Widget;
-use heano\basin\api\exceptions\ApiException;
+use Heano\Basin\Exception\ApiException;
 use heano\basin\Plugin;
 
 /**

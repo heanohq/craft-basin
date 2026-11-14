@@ -4,9 +4,9 @@ namespace heano\basin\services;
 
 use Craft;
 use craft\base\Component;
-use heano\basin\api\ApiClient;
-use heano\basin\api\exceptions\ApiException;
-use heano\basin\api\exceptions\NotFoundException;
+use Heano\Basin\Client as ApiClient;
+use Heano\Basin\Exception\ApiException;
+use Heano\Basin\Exception\NotFoundException;
 use heano\basin\helpers\StudioEmbed;
 use heano\basin\models\BasinForm;
 use heano\basin\models\Submission;

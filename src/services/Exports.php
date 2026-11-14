@@ -8,7 +8,7 @@ use craft\helpers\FileHelper;
 use craft\helpers\Queue;
 use craft\helpers\UrlHelper;
 use DateTimeZone;
-use heano\basin\api\exceptions\ApiException;
+use Heano\Basin\Exception\ApiException;
 use heano\basin\helpers\CsvExport;
 use heano\basin\jobs\ExportSubmissions;
 use heano\basin\models\BasinForm;

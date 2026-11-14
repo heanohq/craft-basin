@@ -8,7 +8,7 @@ use craft\db\Migration;
 use craft\db\Query;
 use craft\helpers\Db;
 use DateTime;
-use heano\basin\api\exceptions\ApiException;
+use Heano\Basin\Exception\ApiException;
 use heano\basin\Plugin;
 
 /**

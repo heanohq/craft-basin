@@ -8,7 +8,7 @@ use craft\base\Field;
 use craft\helpers\Cp;
 use craft\helpers\Html;
 use GraphQL\Type\Definition\Type;
-use heano\basin\api\exceptions\ApiException;
+use Heano\Basin\Exception\ApiException;
 use heano\basin\gql\BasinGql;
 use heano\basin\models\BasinForm;
 use heano\basin\Plugin;

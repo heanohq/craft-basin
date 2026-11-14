@@ -3,7 +3,7 @@
 namespace heano\basin\controllers;
 
 use Craft;
-use heano\basin\api\exceptions\ApiException;
+use Heano\Basin\Exception\ApiException;
 use heano\basin\helpers\StudioEmbed;
 use heano\basin\models\BasinForm;
 use heano\basin\Plugin;

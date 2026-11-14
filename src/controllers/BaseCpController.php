@@ -4,7 +4,7 @@ namespace heano\basin\controllers;
 
 use Craft;
 use craft\web\Controller;
-use heano\basin\api\exceptions\ApiException;
+use Heano\Basin\Exception\ApiException;
 use heano\basin\models\BasinForm;
 use heano\basin\Plugin;
 use yii\web\NotFoundHttpException;
