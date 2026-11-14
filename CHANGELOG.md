@@ -7,7 +7,7 @@
 - “Test connection” button on the settings screen.
 - “Basin data” option in Utilities → Clear Caches.
 - Forms screen listing every form in the linked Basin project, with spam protection, inbox and spam counts, endpoint URL and search.
-- Form page with the endpoint URL, settings summary, ready-to-paste template code and an “Open in Basin” link.
+- Form page with the endpoint URL, settings summary, ready-to-paste template code and an “Open in Basin” link. It warns when Basin’s “Enable AJAX” is on, since visitors without JavaScript would see raw JSON.
 - Form Studio: paste a form’s embed code once so templates can show its Form Studio version. Embed codes are checked with Basin before saving, and the error log shows if a saved one stops working.
 - Submissions screen for each form, with Inbox, Spam and Trash tabs, search, date range and sorting. Dates are shown in the form’s timezone, and unread submissions are in bold.
 - Submission page with every field, attachments, location, page, referrer and browser, plus previous/next links. Opening a submission marks it as read in Basin.

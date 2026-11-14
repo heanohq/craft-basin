@@ -16,19 +16,25 @@
     {% include 'basin/_includes/state' with { state: 'ready' } %}
 
     {% if form.hasTurnstileProblem %}
-        <blockquote class="note warning">
+        <blockquote class="note warning" style="margin-bottom: var(--m);">
             <p>{{ 'This form requires Turnstile, but no Turnstile site key is set in Basin, so every submission will fail. Add your Cloudflare Turnstile keys in the form’s Spam settings in Basin.'|t('basin') }} <a href="{{ form.basinUrl }}" target="_blank" rel="noopener" data-icon="external">{{ 'Open in Basin'|t('basin') }}</a></p>
         </blockquote>
     {% endif %}
 
+    {% if form.useAjax %}
+        <blockquote class="note warning" style="margin-bottom: var(--m);">
+            <p>{{ '“Enable AJAX” is on in Basin, so this form always responds with JSON. Anyone who submits it without JavaScript sees raw JSON instead of your thank-you page or redirect. Turn it off unless every page submits this form with JavaScript.'|t('basin') }} <a href="{{ form.basinUrl }}" target="_blank" rel="noopener" data-icon="external">{{ 'Open in Basin'|t('basin') }}</a></p>
+        </blockquote>
+    {% endif %}
+
     {% if form.needsEmbedCode %}
-        <blockquote class="note warning">
+        <blockquote class="note warning" style="margin-bottom: var(--m);">
             <p>{{ 'This form is used with Basin’s Form Studio, but its embed code hasn’t been added yet, so the site can’t show it. Add it below.'|t('basin') }}</p>
         </blockquote>
     {% endif %}
 
     {% if studioStatus == 'broken' %}
-        <blockquote class="note warning">
+        <blockquote class="note warning" style="margin-bottom: var(--m);">
             <p>{{ 'The saved Form Studio embed code no longer works. The form may have been deleted or republished in Form Studio. Paste the current embed code below.'|t('basin') }}</p>
         </blockquote>
     {% endif %}
