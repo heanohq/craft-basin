@@ -13,8 +13,14 @@
     {% if state == 'ready' and (basinForms|length or not error) %}
         {% if basinForms is empty %}
             <div class="zilch basin-empty">
-                <p>{{ 'There are no forms in this Basin project yet.'|t('basin') }}</p>
-                <p class="light">{{ 'Forms created in, or moved to, “{name}” in Basin appear here automatically.'|t('basin', { name: project.name ?? '' }) }}</p>
+                <p>{{ 'There are no Basin forms yet.'|t('basin') }}</p>
+                {% if currentUser.admin %}
+                    {# Admins link the project, so they need its name. Basin's new-form page can't preselect it. #}
+                    <p class="light">{{ 'Forms you create in, or move to, the “{name}” project in Basin appear here automatically.'|t('basin', { name: project.name ?? '' }) }}</p>
+                    <p><a class="btn" href="https://usebasin.com/app/forms/new" target="_blank" rel="noopener" data-icon="external">{{ 'Create a form in Basin'|t('basin') }}</a></p>
+                {% else %}
+                    <p class="light">{{ 'New forms created in Basin appear here automatically.'|t('basin') }}</p>
+                {% endif %}
             </div>
         {% else %}
             <div style="margin: var(--m) 0 var(--l)">
