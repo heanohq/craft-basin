@@ -342,6 +342,11 @@ final class ApiClient
         if (!is_array($data)) {
             return null;
         }
+        // Basin sometimes sends a bare list, such as ["Name can't be blank"].
+        if (array_is_list($data)) {
+            $flat = array_filter($data, static fn($v) => is_string($v) && $v !== '');
+            return $flat !== [] ? implode('; ', $flat) : null;
+        }
         foreach (['error', 'message', 'errors'] as $key) {
             if (!isset($data[$key])) {
                 continue;

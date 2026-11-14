@@ -119,6 +119,11 @@ it('uses Basin’s error message when there is one', function() {
         ->toThrow(ValidationException::class, 'is too long');
 });
 
+it('uses Basin’s validation messages when they come as a plain list', function () {
+    expect(fn() => basinClient([json(422, ["Name can't be blank"])])->getForm(1))
+        ->toThrow(ValidationException::class, "Name can't be blank");
+});
+
 it('reads Retry-After on 429', function() {
     try {
         basinClient([json(429, [], ['Retry-After' => '30'])])->listProjects();
