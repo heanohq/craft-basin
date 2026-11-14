@@ -45,7 +45,7 @@
     "name": "Basin",
     "developer": "Heano",
     "developerUrl": "https://heano.io",
-    "documentationUrl": "https://heano.io/plugins/basin",
+    "documentationUrl": "https://heano.io/craft-plugins/basin/docs/",
     "class": "heano\\basin\\Plugin"
   },
   "scripts": {

@@ -198,7 +198,7 @@ class BasinFormField extends Field
         } elseif ($unresolved !== null) {
             $notice = Craft::t('basin', 'This form isn’t in the linked Basin project. It may have been deleted or moved to another project. Nothing will show on the site until another form is chosen.');
         } elseif ($value instanceof BasinForm && $value->getNeedsEmbedCode()) {
-            $notice = Craft::t('basin', 'This Form Studio form won’t appear on the site until an admin adds its embed code.');
+            $notice = Craft::t('basin', 'This Form Studio form won’t appear on the site until its embed code is added on the form’s page under Basin → Forms.');
         }
         if ($notice !== null) {
             $html .= Html::tag('p', Html::encode($notice), ['class' => 'warning with-icon', 'style' => 'margin-top: var(--s);']);

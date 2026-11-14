@@ -2,7 +2,7 @@
 
 Use [Basin](https://usebasin.com) forms on your Craft site, and view and manage their submissions from the Control Panel.
 
-> In development. Full documentation will be published at https://heano.io/plugins/basin.
+> In development. Documentation: https://heano.io/craft-plugins/basin/docs/
 
 ## Requirements
 
