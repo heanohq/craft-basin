@@ -183,6 +183,26 @@ class SubmissionsController extends BaseCpController
      * Streams an attachment from Basin, so its unauthenticated public URL is
      * never shown (spec §7.2).
      */
+    /**
+     * Asks Basin to send one submission to its form's webhooks again.
+     */
+    public function actionResendWebhooks(): ?Response
+    {
+        $this->requirePostRequest();
+        $this->requirePermission('basin-manageSubmissions');
+        $form = $this->requireForm((string)$this->request->getRequiredBodyParam('formUuid'));
+        $id = (int)$this->request->getRequiredBodyParam('id');
+
+        try {
+            Plugin::getInstance()->getSubmissions()->resendWebhooks($form, $id);
+        } catch (\InvalidArgumentException) {
+            throw new NotFoundHttpException('Submission not found.');
+        } catch (ApiException $e) {
+            return $this->asFailure(Craft::t('basin', 'Couldn’t reach Basin: {error}', ['error' => $e->getMessage()]));
+        }
+        return $this->asSuccess(Craft::t('basin', 'Basin is sending this submission to the form’s webhooks again.'));
+    }
+
     public function actionDownload(string $uuid, int $id, int $attachmentId): Response
     {
         $form = $this->requireForm($uuid);

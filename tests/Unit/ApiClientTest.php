@@ -183,6 +183,25 @@ it('strips turnstile_secret from forms', function() {
         ->and($client->getForm(1))->not->toHaveKey('turnstile_secret');
 });
 
+it('strips email settings from forms', function() {
+    $form = ['id' => 1, 'project_id' => 5, 'name' => 'Contact', 'use_ajax' => false, 'notification_emails' => 'a@example.com', 'notification_cc_emails' => 'b@example.com', 'autoreply_email' => 'c@example.com', 'domain_email' => null];
+    $client = basinClient([json(200, ['forms' => [$form], 'meta' => []])]);
+    expect(array_keys($client->listForms(5)->items[0]))->toBe(['id', 'project_id', 'name', 'use_ajax']);
+});
+
+it('replaces form webhooks with a count', function() {
+    $form = ['id' => 1, 'project_id' => 5, 'form_webhooks' => [['url' => 'https://hooks.example.com/SECRET'], ['url' => 'https://x.example.com']]];
+    $item = basinClient([json(200, ['forms' => [$form], 'meta' => []])])->listForms(5)->items[0];
+    expect($item)->not->toHaveKey('form_webhooks')->and($item['webhook_count'])->toBe(2);
+});
+
+it('asks Basin to resend a submission to its webhooks', function() {
+    $history = [];
+    basinClient([json(200, ['success' => true, 'message' => 'Webhooks queued'])], $history)->refireWebhooks(42);
+    expect($history[0]['request']->getMethod())->toBe('POST')
+        ->and($history[0]['request']->getUri()->getPath())->toEndWith('/submissions/42/refire_webhooks');
+});
+
 function query(array $history, int $i = 0): array
 {
     parse_str($history[$i]['request']->getUri()->getQuery(), $q);

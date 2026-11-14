@@ -247,6 +247,21 @@ class Submissions extends Component
     }
 
     /**
+     * Asks Basin to send a submission to its form's webhooks again.
+     *
+     * @throws ApiException
+     */
+    public function resendWebhooks(BasinForm $form, int $id): void
+    {
+        if ($this->getSubmission($form, $id) === null) {
+            throw new \InvalidArgumentException("Submission $id isn’t in form $form->uuid.");
+        }
+        $this->client()->refireWebhooks($id);
+        // Basin updates webhook_sent_at once they've gone out.
+        TagDependency::invalidate(Craft::$app->getCache(), ["basin:submission:$id"]);
+    }
+
+    /**
      * Whether each ID belongs to the form. Checked against Basin before any
      * write, since IDs come from the browser.
      *

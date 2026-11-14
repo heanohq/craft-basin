@@ -13,6 +13,8 @@
 - Submission page with every field, attachments, location, page, referrer and browser, plus previous/next links. Opening a submission marks it as read in Basin.
 - Mark submissions as read, unread, spam or not spam, move them to the trash and restore them, one at a time or in bulk. Large bulk actions run in the queue.
 - Permanently delete submissions from Basin, when deletion is allowed.
+- “Send to webhooks again” on a submission’s page, for forms with webhooks in Basin.
+- Basin’s notification email addresses and webhook URLs are removed from form data before it’s cached, along with the Turnstile secret.
 - Attachments download through the Control Panel, so Basin’s public file links are never shown.
 - Forms whose submissions come from Form Studio but have no embed code saved are flagged, with a one-click option to use the detected embed code.
 - `craft.basin.form(uuid)` and `craft.basin.forms()` for templates. Lookups never wait more than 3 seconds for Basin and fall back to the last known list of forms.

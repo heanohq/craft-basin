@@ -44,6 +44,16 @@
                 confirm: 'Permanently delete this submission from Basin? This can’t be undone.'|t('basin'),
             }) }}
         {% endif %}
+        {% if canManage and form.webhookCount %}
+            <form method="post" accept-charset="UTF-8" style="display: inline;" data-confirm="{{ 'Basin will send this submission to this form’s webhooks again. Anything connected to them may act on it twice.'|t('basin') }}">
+                {{ csrfInput() }}
+                {{ actionInput('basin/submissions/resend-webhooks') }}
+                {{ redirectInput(here) }}
+                {{ hiddenInput('formUuid', form.uuid) }}
+                {{ hiddenInput('id', submission.id) }}
+                <button type="submit" class="btn">{{ 'Send to webhooks again'|t('basin') }}</button>
+            </form>
+        {% endif %}
         <a class="btn" href="{{ submission.basinUrl }}" target="_blank" rel="noopener" data-icon="external">{{ 'Open in Basin'|t('basin') }}</a>
     </div>
 {% endblock %}

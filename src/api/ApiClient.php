@@ -183,6 +183,17 @@ final class ApiClient
     }
 
     /**
+     * Asks Basin to send a submission to its form's webhooks again. Basin
+     * queues them, so they go out shortly after.
+     *
+     * @throws ApiException
+     */
+    public function refireWebhooks(int $id): void
+    {
+        $this->send('POST', 'submissions/' . $id . '/refire_webhooks');
+    }
+
+    /**
      * Streams an attachment through the authenticated proxy URL.
      *
      * @throws ApiException
@@ -221,8 +232,10 @@ final class ApiClient
     }
 
     /**
-     * Basin returns form secrets in plain text. Remove them before anything
-     * else sees the data, so they can't be cached, logged or rendered.
+     * Basin returns form secrets in plain text, and the email settings
+     * include people's addresses. Remove them before anything else sees the
+     * data, so they can't be cached, logged or rendered. The plugin uses
+     * none of them, and only needs to know how many webhooks a form has.
      *
      * @param array<string, mixed> $form
      * @return array<string, mixed>
@@ -230,6 +243,16 @@ final class ApiClient
     private function sanitiseForm(array $form): array
     {
         unset($form['turnstile_secret']);
+        // Webhook URLs often contain secrets. Only the number is needed.
+        if (array_key_exists('form_webhooks', $form)) {
+            $form['webhook_count'] = is_array($form['form_webhooks']) ? count($form['form_webhooks']) : 0;
+            unset($form['form_webhooks']);
+        }
+        foreach (array_keys($form) as $key) {
+            if (preg_match('/^(notification_|autoreply|auto_response_|confirmation_|smtp_)|email/', (string)$key)) {
+                unset($form[$key]);
+            }
+        }
         return $form;
     }
 

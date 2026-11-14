@@ -43,6 +43,7 @@ class BasinForm extends Model
     public int $inboxCount = 0;
     public int $spamCount = 0;
     public int $trashCount = 0;
+    public int $webhookCount = 0;
     public ?DateTime $dateUpdated = null;
 
     /** Form Studio hosted ID saved in plugin settings (spec §10.3). */
@@ -82,6 +83,7 @@ class BasinForm extends Model
             'inboxCount' => (int)($data['inbox_count'] ?? 0),
             'spamCount' => (int)($data['spam_count'] ?? 0),
             'trashCount' => (int)($data['trash_count'] ?? 0),
+            'webhookCount' => (int)($data['webhook_count'] ?? 0),
             'dateUpdated' => DateTimeHelper::toDateTime($data['updated_at'] ?? null) ?: null,
             'hostedFormId' => $hostedFormId,
         ]);
