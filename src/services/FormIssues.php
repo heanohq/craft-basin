@@ -36,6 +36,13 @@ class FormIssues extends Component
     /** At most one write per form and reason in this many seconds. */
     public const THROTTLE = 600;
 
+    /**
+     * Entries that haven't happened again for this many days are cleared,
+     * since the problem was probably fixed on the site's side (e.g. a
+     * template no longer uses the form), which the plugin can't see.
+     */
+    public const EXPIRY_DAYS = 30;
+
     public static function createTable(Migration $migration): void
     {
         $migration->createTable(self::TABLE, [
@@ -101,7 +108,8 @@ class FormIssues extends Component
 
     /**
      * Current issues, with ones that no longer apply cleared: forms that are
-     * back in the project, and Studio forms whose embed code is now saved.
+     * back in the project, Studio forms whose embed code is now saved, and
+     * entries that haven't happened for {@see EXPIRY_DAYS} days.
      * Forms with a `noEmbed` row are flagged as needing their embed code.
      *
      * @param array<string, BasinForm> $forms A fresh forms list.
@@ -117,7 +125,12 @@ class FormIssues extends Component
 
         $active = [];
         $resolved = [];
+        $cutoff = self::expiryCutoff();
         foreach ($rows as $row) {
+            if ($row['lastSeen'] < $cutoff) {
+                $resolved[] = (int)$row['id'];
+                continue;
+            }
             $form = $forms[$row['uuid']] ?? null;
             $stillApplies = match ($row['reason']) {
                 // A stale list can't prove a form is back, so keep the row.
@@ -156,10 +169,19 @@ class FormIssues extends Component
             return 0;
         }
         try {
-            return (int)(new Query())->from(self::TABLE)->count();
+            return (int)(new Query())
+                ->from(self::TABLE)
+                ->where(['>=', 'lastSeen', self::expiryCutoff()])
+                ->count();
         } catch (Throwable) {
             return 0;
         }
+    }
+
+    /** Entries last seen before this (a DB-format UTC date) have expired. */
+    private static function expiryCutoff(): string
+    {
+        return Db::prepareDateForDb(new \DateTime('-' . self::EXPIRY_DAYS . ' days'));
     }
 
     public function dismiss(int $id): void
