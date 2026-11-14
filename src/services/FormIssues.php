@@ -13,9 +13,10 @@ use Throwable;
 use yii\db\Expression;
 
 /**
- * Records references to forms the site can't use (spec §13): forms that
- * aren't in the linked project (`missing`), and Form Studio forms rendered
- * without their embed code (`noEmbed`). Holds no personal data.
+ * The error log (spec §13): forms the site uses but can't show. Forms that
+ * aren't in the linked project (`missing`), forms rendered without Form
+ * Studio embed code (`noEmbed`), and saved embed code that no longer loads
+ * (`brokenEmbed`). Holds no personal data.
  */
 class FormIssues extends Component
 {
@@ -23,11 +24,14 @@ class FormIssues extends Component
 
     public const REASON_MISSING = 'missing';
     public const REASON_NO_EMBED = 'noEmbed';
+    public const REASON_BROKEN_EMBED = 'brokenEmbed';
 
     public const SOURCE_TWIG = 'twig';
     public const SOURCE_FIELD = 'field';
     public const SOURCE_GRAPHQL = 'graphql';
     public const SOURCE_HTML = 'html';
+    /** Found by the plugin's own check, not on a page. */
+    public const SOURCE_CHECK = 'check';
 
     /** At most one write per form and reason in this many seconds. */
     public const THROTTLE = 600;
@@ -66,7 +70,9 @@ class FormIssues extends Component
             return;
         }
 
-        $url ??= self::currentPath();
+        if ($source !== self::SOURCE_CHECK) {
+            $url ??= self::currentPath();
+        }
         $now = Db::prepareDateForDb(new \DateTime());
 
         try {
@@ -117,6 +123,7 @@ class FormIssues extends Component
                 // A stale list can't prove a form is back, so keep the row.
                 self::REASON_MISSING => $form === null || !$fresh,
                 self::REASON_NO_EMBED => $form !== null && !$form->getIsStudioForm(),
+                self::REASON_BROKEN_EMBED => $form !== null && $form->getIsStudioForm(),
                 default => false,
             };
             if (!$stillApplies) {
@@ -136,6 +143,23 @@ class FormIssues extends Component
             $this->deleteIds($resolved);
         }
         return $active;
+    }
+
+    /**
+     * How many entries the error log has, for the nav badge. Counts rows
+     * without checking them against Basin, so it can't slow the CP down;
+     * opening the error log clears any that no longer apply.
+     */
+    public function count(): int
+    {
+        if (!Plugin::getInstance()->getSettings()->trackMissingForms) {
+            return 0;
+        }
+        try {
+            return (int)(new Query())->from(self::TABLE)->count();
+        } catch (Throwable) {
+            return 0;
+        }
     }
 
     public function dismiss(int $id): void

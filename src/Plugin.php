@@ -185,6 +185,16 @@ class Plugin extends BasePlugin
                 $subNav['submissions']['badgeCount'] = $unread;
             }
         }
+        // Error log (spec §13), with a badge while it has entries.
+        $subNav['errors'] = ['label' => Craft::t('basin', 'Error log'), 'url' => 'basin/errors'];
+        try {
+            $errorCount = $this->getFormIssues()->count();
+        } catch (Throwable) {
+            $errorCount = 0;
+        }
+        if ($errorCount) {
+            $subNav['errors']['badgeCount'] = $errorCount;
+        }
         if (Craft::$app->getUser()->getIsAdmin()) {
             $subNav['settings'] = ['label' => Craft::t('basin', 'Settings'), 'url' => 'basin/settings'];
         }
@@ -284,6 +294,7 @@ class Plugin extends BasePlugin
             $event->rules['basin/forms/<uuid:[A-Za-z0-9]+>/submissions/<id:\d+>/attachments/<attachmentId:\d+>'] = 'basin/submissions/download';
             $event->rules['basin/exports/<exportId:[a-f0-9]{32}>'] = 'basin/submissions/download-export';
             $event->rules['basin/settings'] = 'basin/settings/index';
+            $event->rules['basin/errors'] = 'basin/errors/index';
         });
     }
 }

@@ -25,19 +25,12 @@ class FormsController extends BaseCpController
         if ($variables['state'] === 'ready') {
             try {
                 $variables['basinForms'] = Plugin::getInstance()->getForms()->getForms();
-                // Only cached checks here; each form page refreshes its own.
-                foreach ($variables['basinForms'] as $form) {
-                    if ($form->hostedFormId !== null && Plugin::getInstance()->getForms()->peekStudioScript($form->uuid, $form->hostedFormId) === false) {
-                        $variables['brokenStudio'][$form->uuid] = true;
-                    }
-                }
             } catch (ApiException $e) {
                 $variables['error'] = $e->getMessage();
             }
         }
 
         return $this->renderTemplate('basin/forms/_index', $variables + [
-            'brokenStudio' => [],
             'staleSince' => Plugin::getInstance()->getForms()->getStaleSince(),
         ]);
     }
@@ -133,16 +126,5 @@ class FormsController extends BaseCpController
         Plugin::getInstance()->getForms()->saveRecaptchaVersion($form->uuid, $version);
 
         return $this->asSuccess(Craft::t('basin', 'reCAPTCHA version saved.'));
-    }
-
-    /**
-     * Dismisses a missing-form or missing-embed warning. It comes back if the
-     * form is requested again.
-     */
-    public function actionDismissIssue(): ?Response
-    {
-        $this->requirePostRequest();
-        Plugin::getInstance()->getFormIssues()->dismiss((int)$this->request->getRequiredBodyParam('id'));
-        return $this->asSuccess(Craft::t('basin', 'Warning dismissed.'));
     }
 }

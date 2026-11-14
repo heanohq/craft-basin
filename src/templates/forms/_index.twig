@@ -39,7 +39,6 @@
                     <thead>
                         <tr>
                             <th scope="col">{{ 'Name'|t('basin') }}</th>
-                            <th scope="col">{{ 'Type'|t('basin') }}</th>
                             <th scope="col">{{ 'Spam protection'|t('basin') }}</th>
                             {% if canViewCounts %}
                                 <th scope="col" class="thin">{{ 'Inbox'|t('basin') }}</th>
@@ -53,7 +52,6 @@
                         {% for form in basinForms %}
                             <tr data-name="{{ form.name|lower }}">
                                 <th scope="row"><a href="{{ form.cpUrl }}">{{ form.name }}</a></th>
-                                <td>{% include 'basin/forms/_type' with { studioStatus: (brokenStudio[form.uuid] ?? false) ? 'broken' : null } %}</td>
                                 <td>{% include 'basin/forms/_spam' %}</td>
                                 {% if canViewCounts %}
                                     <td class="thin">{{ form.inboxCount|number }}</td>

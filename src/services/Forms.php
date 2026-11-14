@@ -199,8 +199,10 @@ class Forms extends Component
     public function saveHostedFormId(string $uuid, ?string $hostedId): void
     {
         $this->saveFormSetting($uuid, ['hostedFormId' => $hostedId]);
+        $issues = Plugin::getInstance()->getFormIssues();
+        $issues->clear($uuid, FormIssues::REASON_BROKEN_EMBED);
         if ($hostedId !== null) {
-            Plugin::getInstance()->getFormIssues()->clear($uuid, FormIssues::REASON_NO_EMBED);
+            $issues->clear($uuid, FormIssues::REASON_NO_EMBED);
         }
     }
 
@@ -247,6 +249,14 @@ class Forms extends Component
         }
 
         $cache->set($key, ['ok' => $ok], self::STUDIO_CHECK_TTL, new TagDependency(['tags' => [Api::CACHE_TAG]]));
+
+        // Log saved embed code that stops loading; clear it once it works.
+        if (Plugin::getInstance()->getFormSettings()->getHostedFormId($uuid) === $hostedId) {
+            $issues = Plugin::getInstance()->getFormIssues();
+            $ok
+                ? $issues->clear($uuid, FormIssues::REASON_BROKEN_EMBED)
+                : $issues->record($uuid, FormIssues::REASON_BROKEN_EMBED, FormIssues::SOURCE_CHECK);
+        }
         return $ok;
     }
 

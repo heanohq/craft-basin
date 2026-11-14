@@ -22,10 +22,10 @@ use yii\db\Schema;
 class BasinFormField extends Field
 {
     public const SELECTABLE_ALL = 'all';
-    public const SELECTABLE_ENDPOINT = 'endpoint';
+    /** Only forms with Form Studio embed code saved. */
     public const SELECTABLE_STUDIO = 'studio';
 
-    /** Which kinds of form can be chosen. */
+    /** Which forms can be chosen. */
     public string $selectable = self::SELECTABLE_ALL;
 
     /**
@@ -68,13 +68,18 @@ class BasinFormField extends Field
     protected function defineRules(): array
     {
         $rules = parent::defineRules();
-        $rules[] = ['selectable', 'in', 'range' => [self::SELECTABLE_ALL, self::SELECTABLE_ENDPOINT, self::SELECTABLE_STUDIO]];
+        $rules[] = ['selectable', 'in', 'range' => [self::SELECTABLE_ALL, self::SELECTABLE_STUDIO]];
         $rules[] = ['allowedForms', 'each', 'rule' => ['match', 'pattern' => '/^[A-Za-z0-9]{1,40}$/']];
         return $rules;
     }
 
     public function setAttributes($values, $safeOnly = true): void
     {
+        // Pre-release fields could limit to "endpoint forms", which no longer
+        // exists: every Basin form is an endpoint form.
+        if (is_array($values) && ($values['selectable'] ?? null) === 'endpoint') {
+            $values['selectable'] = self::SELECTABLE_ALL;
+        }
         // Checkbox groups post '' when nothing is checked.
         if (array_key_exists('allowedForms', (array)$values) && !is_array($values['allowedForms'])) {
             $values['allowedForms'] = [];
@@ -240,7 +245,6 @@ class BasinFormField extends Field
             return false;
         }
         return match ($this->selectable) {
-            self::SELECTABLE_ENDPOINT => !$form->getIsStudioForm(),
             self::SELECTABLE_STUDIO => $form->getIsStudioForm(),
             default => true,
         };

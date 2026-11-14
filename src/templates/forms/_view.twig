@@ -23,7 +23,7 @@
 
     {% if form.needsEmbedCode %}
         <blockquote class="note warning">
-            <p>{{ 'This form’s submissions come from Basin’s Form Studio, but its embed code hasn’t been added yet, so `form.render()` can’t show it. Add it below.'|t('basin')|md(inlineOnly=true) }}</p>
+            <p>{{ 'This form is used with Basin’s Form Studio, but its embed code hasn’t been added yet, so the site can’t show it. Add it below.'|t('basin') }}</p>
         </blockquote>
     {% endif %}
 
@@ -35,7 +35,7 @@
 
     {{ forms.copytextField({
         label: 'Endpoint URL'|t('basin'),
-        instructions: 'Use this as the form’s `action`. Every Basin form accepts submissions here, including Form Studio forms.'|t('basin'),
+        instructions: 'To use your own markup, make this the form’s `action`. Every Basin form accepts submissions here, whether or not it also has a Form Studio embed.'|t('basin'),
         id: 'basin-endpoint',
         value: form.action,
         class: 'code',
@@ -45,7 +45,7 @@
 
     <h2>{{ 'Form Studio embed'|t('basin') }}</h2>
     {% if form.isStudioForm and studioStatus != 'broken' %}
-        <p>{{ 'Saved. Templates can show this form with `form.render()`.'|t('basin')|md(inlineOnly=true) }}{% if studioStatus == 'unknown' %} <span class="light">{{ 'Basin couldn’t be reached to check it just now.'|t('basin') }}</span>{% endif %}</p>
+        <p>{{ 'Saved. Templates can show this form’s Form Studio version with `craft.basin.render()`.'|t('basin')|md(inlineOnly=true) }}{% if studioStatus == 'unknown' %} <span class="light">{{ 'Basin couldn’t be reached to check it just now.'|t('basin') }}</span>{% endif %}</p>
         <p><code>{{ form.studioScriptUrl }}</code></p>
         {% if canManage %}
             <form method="post" accept-charset="UTF-8">
@@ -57,7 +57,7 @@
             </form>
         {% endif %}
     {% else %}
-        <p>{{ 'If this form was built in Basin’s Form Studio, paste its embed code here so templates can show it with `form.render()`. Basin doesn’t provide it through its API, so it has to be added once by hand.'|t('basin')|md(inlineOnly=true) }}</p>
+        <p>{{ 'Optional. If you’ve designed this form in Basin’s Form Studio, paste its embed code here so templates can show it with `craft.basin.render()`. Basin doesn’t provide it through its API, so it has to be added once by hand.'|t('basin')|md(inlineOnly=true) }}</p>
         {% if canManage and form.detectedHostedId %}
             <form method="post" accept-charset="UTF-8" style="margin-bottom: var(--m);">
                 {{ csrfInput() }}
@@ -129,11 +129,13 @@
     <h2>{{ 'Template code'|t('basin') }}</h2>
     {% set q = "'" ~ form.uuid ~ "'" %}
     {% set snippet = form.isStudioForm
-        ? "{% set form = craft.basin.form(" ~ q ~ ") %}\n{% if form %}\n  {{ form.render() }}\n{% endif %}"
+        ? "{{ craft.basin.render(" ~ q ~ ") }}"
         : "{% set form = craft.basin.form(" ~ q ~ ") %}\n{% if form %}\n  <form action=\"{{ form.action }}\" method=\"post\">\n    <input type=\"email\" name=\"email\" required>\n    <textarea name=\"message\"></textarea>\n    <button type=\"submit\">Send</button>\n  </form>\n{% endif %}"
     %}
     <div class="flex" style="justify-content: space-between; align-items: center; margin-bottom: var(--s);">
-        <p style="margin: 0;">{{ 'Spam protection that Basin requires for this form is added automatically.'|t('basin') }}</p>
+        <p style="margin: 0;">{{ form.isStudioForm
+            ? 'Shows the Form Studio embed. If the form is ever removed from the Basin project, it outputs nothing.'|t('basin')
+            : 'Spam protection that Basin requires for this form is added automatically.'|t('basin') }}</p>
         <button type="button" id="basin-copy-snippet" class="btn small" data-icon="clipboard" aria-label="{{ 'Copy template code to clipboard'|t('basin') }}">{{ 'Copy'|t('basin') }}</button>
     </div>
     <pre class="code" style="margin: 0; padding: var(--s) var(--m); background: var(--gray-050); border-radius: var(--small-border-radius); overflow-x: auto;"><code id="basin-snippet">{{ snippet }}</code></pre>
@@ -160,8 +162,8 @@
 {% block details %}
     <div class="meta read-only">
         <div class="data">
-            <h5 class="heading">{{ 'Type'|t('basin') }}</h5>
-            <div class="value">{% include 'basin/forms/_type' %}</div>
+            <h5 class="heading">{{ 'Form Studio embed'|t('basin') }}</h5>
+            <div class="value">{{ form.isStudioForm ? (studioStatus == 'broken' ? 'Not working'|t('basin') : 'Added'|t('basin')) : 'None'|t('basin') }}</div>
         </div>
         <div class="data">
             <h5 class="heading">{{ 'Spam protection'|t('basin') }}</h5>
@@ -189,7 +191,7 @@
             <div class="value">{{ form.redirectUrl ?? 'Basin’s thank-you page'|t('basin') }}</div>
         </div>
         <div class="data">
-            <h5 class="heading">{{ 'AJAX'|t('basin') }}</h5>
+            <h5 class="heading">{{ 'Always respond with JSON'|t('basin') }}</h5>
             <div class="value">{{ form.useAjax ? 'On'|t('basin') : 'Off'|t('basin') }}</div>
         </div>
         <div class="data">

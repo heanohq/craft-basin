@@ -1,0 +1,93 @@
+{% extends '_layouts/cp' %}
+
+{% set title = 'Error log'|t('basin') %}
+{% set selectedSubnavItem = 'errors' %}
+{% set crumbs = [
+    { label: settings.getNavLabel(), url: url('basin') },
+] %}
+
+{% set reasons = {
+    missing: {
+        label: 'Form not in the Basin project'|t('basin'),
+        help: 'The form may have been deleted, or moved to another Basin project. Visitors don’t see it.'|t('basin'),
+    },
+    noEmbed: {
+        label: 'Form Studio embed code missing'|t('basin'),
+        help: 'A template tried to show this form’s Form Studio embed, but no embed code is saved. Add it on the form’s page.'|t('basin'),
+    },
+    brokenEmbed: {
+        label: 'Form Studio embed code no longer works'|t('basin'),
+        help: 'Basin no longer recognises the saved embed code. Paste the current one on the form’s page.'|t('basin'),
+    },
+} %}
+{% set sources = {
+    twig: 'Template'|t('basin'),
+    field: 'Basin Form field'|t('basin'),
+    graphql: 'GraphQL'|t('basin'),
+    html: 'Form markup'|t('basin'),
+    check: 'Plugin check'|t('basin'),
+} %}
+
+{% block content %}
+    {% include 'basin/_includes/state' %}
+
+    {% if state == 'ready' %}
+        {% if not settings.trackMissingForms %}
+            <div class="zilch basin-empty">
+                <p>{{ 'Error tracking is turned off in the plugin settings.'|t('basin') }}</p>
+            </div>
+        {% elseif issues is empty %}
+            <div class="zilch basin-empty">
+                <p>{{ 'No problems with the forms this site uses.'|t('basin') }}</p>
+            </div>
+        {% else %}
+            <p class="light">{{ 'Problems with forms this site uses. Each entry clears itself once it’s fixed, or you can dismiss it; it comes back if the problem happens again.'|t('basin') }}</p>
+            <table class="data fullwidth">
+                <thead>
+                    <tr>
+                        <th scope="col">{{ 'Problem'|t('basin') }}</th>
+                        <th scope="col">{{ 'Form'|t('basin') }}</th>
+                        <th scope="col">{{ 'Where'|t('basin') }}</th>
+                        <th scope="col">{{ 'Last seen'|t('basin') }}</th>
+                        <th scope="col" class="thin"><span class="visually-hidden">{{ 'Actions'|t('basin') }}</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for issue in issues %}
+                        {% set reason = reasons[issue.reason] ?? { label: issue.reason, help: '' } %}
+                        <tr>
+                            <td>
+                                <span class="warning" data-icon="alert" aria-hidden="true"></span>
+                                {{ reason.label }}
+                                {% if reason.help %}<div class="smalltext light">{{ reason.help }}</div>{% endif %}
+                            </td>
+                            <td>
+                                {% if issue.form %}
+                                    <a href="{{ issue.form.cpUrl }}">{{ issue.form.name }}</a>
+                                {% else %}
+                                    <code>{{ issue.uuid }}</code>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ sources[issue.source] ?? issue.source }}
+                                {% if issue.lastUrl %}<div class="smalltext light"><code>{{ issue.lastUrl }}</code></div>{% endif %}
+                            </td>
+                            <td>
+                                {{ issue.lastSeen|timestamp('short') }}
+                                {% if issue.hitCount > 1 %}<div class="smalltext light">{{ '{count, plural, =1{1 time} other{# times}}'|t('basin', { count: issue.hitCount }) }}</div>{% endif %}
+                            </td>
+                            <td class="thin">
+                                <form method="post" accept-charset="UTF-8">
+                                    {{ csrfInput() }}
+                                    {{ actionInput('basin/errors/dismiss') }}
+                                    {{ hiddenInput('id', issue.id) }}
+                                    <button type="submit" class="btn small">{{ 'Dismiss'|t('basin') }}</button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    {% endif %}
+{% endblock %}

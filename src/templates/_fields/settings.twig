@@ -2,13 +2,12 @@
 
 {{ forms.radioGroupField({
     label: 'Selectable forms'|t('basin'),
-    instructions: 'Which kinds of Basin form editors can choose. Choose “Form Studio forms with embed code” if your template only calls `render()`, so editors can’t pick a form it can’t show.'|t('basin'),
+    instructions: 'Choose “Only forms with a Form Studio embed” if your template shows the field with `craft.basin.render()`, so editors can’t pick a form it can’t show.'|t('basin'),
     id: 'selectable',
     name: 'selectable',
     options: [
         { label: 'All forms'|t('basin'), value: 'all' },
-        { label: 'Endpoint forms'|t('basin'), value: 'endpoint' },
-        { label: 'Form Studio forms with embed code'|t('basin'), value: 'studio' },
+        { label: 'Only forms with a Form Studio embed'|t('basin'), value: 'studio' },
     ],
     value: field.selectable,
 }) }}
@@ -16,7 +15,7 @@
 {% if basinForms|length %}
     {{ forms.checkboxGroupField({
         label: 'Limit to these forms'|t('basin'),
-        instructions: 'Leave all unchecked to allow every form of the kind chosen above.'|t('basin'),
+        instructions: 'Leave all unchecked to allow every form chosen above.'|t('basin'),
         id: 'allowedForms',
         name: 'allowedForms',
         options: basinForms|map(f => { label: f.name, value: f.uuid }),

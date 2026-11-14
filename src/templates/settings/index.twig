@@ -156,7 +156,7 @@
 
     {{ forms.lightswitchField({
         label: 'Track missing forms'|t('basin'),
-        instructions: 'Warn in the Control Panel when templates or fields reference a form that isn’t in the linked project.'|t('basin'),
+        instructions: 'Keep the error log: forms the site uses but can’t show, such as a form that isn’t in the linked project.'|t('basin'),
         id: 'basin-trackMissingForms',
         name: 'settings[trackMissingForms]',
         on: _self.value('trackMissingForms', settings, overrides, plugin)|trim == '1',

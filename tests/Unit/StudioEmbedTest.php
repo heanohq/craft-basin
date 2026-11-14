@@ -32,3 +32,35 @@ it('builds the script URL', function() {
     expect(StudioEmbed::scriptUrl('demo00quotes', 'demostudio01'))
         ->toBe('https://hf.usebasin.com/hf/demo00quotes-demostudio01.js');
 });
+
+it('cleans hidden fields', function() {
+    $fields = StudioEmbed::hiddenFields([
+        'entry' => 'About us',
+        'entryId' => 42,
+        'member' => true,
+        'empty' => null,
+        ' padded ' => 'x',
+        'action' => 'nope',
+        'list' => ['a'],
+        '' => 'no name',
+    ]);
+    expect($fields)->toBe([
+        'entry' => 'About us',
+        'entryId' => '42',
+        'member' => 'true',
+        'empty' => '',
+        'padded' => 'x',
+    ])
+        ->and(StudioEmbed::hiddenFields(['a', 'b']))->toBe([])
+        ->and(StudioEmbed::hiddenFields('nope'))->toBe([]);
+});
+
+it('only sends hidden fields to its own form, safely encoded', function() {
+    $js = StudioEmbed::hiddenFieldsJs('demo00quotes', 'demostudio01', ['note' => '</script><b>"x"']);
+    expect($js)
+        ->toContain('"https://usebasin.com/form/demo00quotes/hosted/demostudio01"')
+        ->toContain('"action":"addHiddenFields"')
+        ->toContain('postMessage(m,o)')
+        ->not->toContain('</script>')
+        ->not->toContain('<b>');
+});

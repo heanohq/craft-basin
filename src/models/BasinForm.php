@@ -192,21 +192,40 @@ class BasinForm extends Model
     }
 
     /**
-     * Outputs a Form Studio form (spec §10.3). Always safe to output: without
-     * saved embed code, visitors get only an HTML comment, while devMode and
-     * previews show a notice to whoever can fix it.
+     * Outputs the form's Form Studio embed (spec §10.3). Always safe to
+     * output: without saved embed code, visitors get only an HTML comment,
+     * while devMode and previews show a notice to whoever can fix it.
+     *
+     * @param array{hiddenFields?: array<string, scalar|null>} $options
+     *   `hiddenFields`: values added to each submission from this page, sent
+     *   to the embedded form with Basin's `addHiddenFields` message.
      */
-    public function render(): Markup
+    public function render(array $options = []): Markup
     {
         $url = $this->getStudioScriptUrl();
         if ($url !== null) {
-            return Template::raw(Html::tag('script', '', ['src' => $url, 'async' => true]));
+            $html = Html::tag('script', '', ['src' => $url, 'async' => true]);
+            $fields = StudioEmbed::hiddenFields($options['hiddenFields'] ?? []);
+            if ($fields) {
+                $html .= Html::script(StudioEmbed::hiddenFieldsJs($this->uuid, (string)$this->hostedFormId, $fields));
+            }
+            return Template::raw($html);
         }
 
         Plugin::getInstance()->getFormIssues()->record($this->uuid, FormIssues::REASON_NO_EMBED, FormIssues::SOURCE_TWIG);
         Craft::warning("form.render() was called for Basin form $this->uuid, which has no Form Studio embed code saved.", 'basin');
 
         $message = Craft::t('basin', '“{name}” can’t be shown because its Form Studio embed code hasn’t been added in the Control Panel.', ['name' => $this->name]);
+        return self::notice($message, Craft::t('basin', 'Add it in the Control Panel'), $this->getCpUrl());
+    }
+
+    /**
+     * Why a form can't be shown: an HTML comment for visitors, plus a visible
+     * notice in devMode and previews, linking to the CP for people who can
+     * fix it.
+     */
+    public static function notice(string $message, string $linkText, string $url): Markup
+    {
         $comment = '<!-- Basin: ' . str_replace(['--', '>'], ['–', '›'], $message) . ' -->';
 
         $request = Craft::$app->getRequest();
@@ -218,7 +237,7 @@ class BasinForm extends Model
 
         $link = '';
         if (Craft::$app->getUser()->checkPermission('accessPlugin-basin')) {
-            $link = ' ' . Html::a(Craft::t('basin', 'Add it in the Control Panel'), $this->getCpUrl(), ['target' => '_blank', 'rel' => 'noopener']);
+            $link = ' ' . Html::a($linkText, $url, ['target' => '_blank', 'rel' => 'noopener']);
         }
         $notice = Html::tag('div', Html::encode($message) . $link, [
             'role' => 'note',
