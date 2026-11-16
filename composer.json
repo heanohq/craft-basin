@@ -19,8 +19,8 @@
     }
   ],
   "support": {
-    "issues": "https://github.com/heanoio/craft-basin/issues",
-    "source": "https://github.com/heanoio/craft-basin"
+    "issues": "https://github.com/heanohq/craft-basin/issues",
+    "source": "https://github.com/heanohq/craft-basin"
   },
   "require": {
     "php": "^8.2",

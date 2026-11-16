@@ -63,6 +63,6 @@ Everything else, from spam protection to GraphQL, is in the [documentation](http
 
 ## Support
 
-Found a bug or have a question? [Open an issue](https://github.com/heanoio/craft-basin/issues).
+Found a bug or have a question? [Open an issue](https://github.com/heanohq/craft-basin/issues).
 
 Basin for Craft is made by [heano](https://heano.io). It isn't made by Basin.
