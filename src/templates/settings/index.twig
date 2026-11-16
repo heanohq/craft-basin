@@ -9,7 +9,11 @@
 ] %}
 
 {# Value to show for a setting: the config-file value if overridden, else the model's. #}
-{% macro value(name, settings, overrides, plugin) %}{{ name in overrides ? attribute(plugin.settings, name) : attribute(settings, name) }}{% endmacro %}
+{# An API key set in config/basin.php may be the key itself (e.g. from App::env()), so only an env var reference is shown. #}
+{% macro value(name, settings, overrides, plugin) %}
+    {%- set current = (name in overrides ? attribute(plugin.settings, name) : attribute(settings, name))|trim -%}
+    {{- name == 'apiKey' and current != '' and not (current starts with '$') ? '••••••••' : current -}}
+{% endmacro %}
 
 {% macro overrideWarning(name, overrides) %}
     {%- if name in overrides -%}
@@ -183,7 +187,8 @@
         result.textContent = '';
         try {
             const { data } = await Craft.sendActionRequest('POST', 'basin/settings/test-connection', {
-                data: { apiKey: input ? input.value : '' },
+                // A disabled field (read-only, or set in config/basin.php) tests the saved key.
+                data: { apiKey: input && !input.disabled ? input.value : '' },
             });
             show(data.success, data.message);
         } catch (e) {

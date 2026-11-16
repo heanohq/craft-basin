@@ -37,7 +37,7 @@ class Api extends Component
      * Returns an API client for the saved key, or for the given key (e.g. when
      * testing a key before it's saved).
      */
-    public function getClient(?string $apiKey = null, ?float $timeout = null): ApiClient
+    public function getClient(#[\SensitiveParameter] ?string $apiKey = null, ?float $timeout = null): ApiClient
     {
         $apiKey ??= Plugin::getInstance()->getSettings()->getApiKey();
         $timeout ??= $this->cpTimeout;
@@ -101,7 +101,7 @@ class Api extends Component
      *
      * @return array{success: bool, message: string, projects: Project[]}
      */
-    public function testConnection(?string $apiKey = null): array
+    public function testConnection(#[\SensitiveParameter] ?string $apiKey = null): array
     {
         try {
             $projects = $this->fetchAllProjects($this->getClient($apiKey));
