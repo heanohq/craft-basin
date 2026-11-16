@@ -257,29 +257,66 @@ class Plugin extends BasePlugin
         Event::on(Response::class, Response::EVENT_AFTER_PREPARE, function(Event $event) {
             /** @var Response $response */
             $response = $event->sender;
-            $request = Craft::$app->getRequest();
-            if (
-                // Template responses use their own format; the Content-Type
-                // check below rules out non-HTML templates (feeds, JSON).
-                !in_array($response->format, [Response::FORMAT_HTML, TemplateResponseFormatter::FORMAT], true) ||
-                $response->stream !== null ||
-                !is_string($response->content) ||
-                $response->getIsRedirection() ||
-                $request->getIsAjax()
-            ) {
-                return;
-            }
-            $type = $response->getHeaders()->get('Content-Type');
-            if ($type !== null && !str_starts_with(strtolower($type), 'text/html')) {
-                return;
-            }
-            try {
-                $response->content = $this->getSpamProtection()->processHtml($response->content);
-            } catch (Throwable $e) {
-                // Never break a page over spam protection.
-                Craft::error('Couldn’t add Basin spam protection: ' . $e->getMessage(), 'basin');
+            if (is_string($response->content) && $response->stream === null && self::isProtectableResponse($response)) {
+                // Blitz has just saved this page, already protected below.
+                $response->content = $this->blitzSaved !== null && $this->blitzSaved[0] === $response->content
+                    ? $this->blitzSaved[1]
+                    : $this->protectHtml($response->content);
             }
         });
+
+        // Blitz saves its static cache in its own EVENT_AFTER_PREPARE handler,
+        // which runs before ours. Pages served straight from those files (by
+        // a server rewrite) never reach PHP, so protect the HTML before it's
+        // saved. Running again when a cached page is served through PHP
+        // changes nothing: protection that's already there is left alone.
+        if (class_exists(self::BLITZ_GENERATE_CACHE)) {
+            Event::on(self::BLITZ_GENERATE_CACHE, 'beforeSaveCache', function(Event $event) {
+                /** @var \putyourlightson\blitz\events\SaveCacheEvent $event */
+                if (self::isProtectableResponse(Craft::$app->getResponse())) {
+                    $protected = $this->protectHtml($event->output);
+                    // Blitz then sends the page it was given, so ours is reused rather than run twice.
+                    $this->blitzSaved = [$event->output, $protected];
+                    $event->output = $protected;
+                }
+            });
+        }
+    }
+
+    /** Blitz's service class, named as a string so Blitz isn't a dependency. */
+    private const BLITZ_GENERATE_CACHE = 'putyourlightson\\blitz\\services\\GenerateCacheService';
+
+    /** @var array{0: string, 1: string}|null The page Blitz last saved this request: as given, and protected. */
+    private ?array $blitzSaved = null;
+
+    /**
+     * Whether a response is a front-end HTML page that spam protection
+     * should be added to.
+     */
+    private static function isProtectableResponse(Response $response): bool
+    {
+        // Template responses use their own format; the Content-Type check
+        // below rules out non-HTML templates (feeds, JSON).
+        if (
+            !in_array($response->format, [Response::FORMAT_HTML, TemplateResponseFormatter::FORMAT], true) ||
+            $response->getIsRedirection() ||
+            Craft::$app->getRequest()->getIsAjax()
+        ) {
+            return false;
+        }
+        $type = $response->getHeaders()->get('Content-Type');
+        return $type === null || str_starts_with(strtolower($type), 'text/html');
+    }
+
+    private function protectHtml(string $html): string
+    {
+        try {
+            return $this->getSpamProtection()->processHtml($html);
+        } catch (Throwable $e) {
+            // Never break a page over spam protection.
+            Craft::error('Couldn’t add Basin spam protection: ' . $e->getMessage(), 'basin');
+            return $html;
+        }
     }
 
     private function registerCpRoutes(): void
