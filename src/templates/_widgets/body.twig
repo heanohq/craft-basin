@@ -29,7 +29,7 @@
                             {% if not form and submission.formName %}<span class="light"> · {{ submission.formName }}</span>{% endif %}
                             {% set preview = submission.preview(2) %}
                             {% if preview|length %}
-                                <div class="light smalltext">{% for name, value in preview %}{{ value|length > 60 ? value|slice(0, 60) ~ '…' : value }}{% if not loop.last %} · {% endif %}{% endfor %}</div>
+                                <div class="light smalltext">{% for name, value in preview %}{{ value }}{% if not loop.last %} · {% endif %}{% endfor %}</div>
                             {% endif %}
                         </td>
                     </tr>

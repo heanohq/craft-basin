@@ -96,11 +96,12 @@ class Submission extends Model
 
     /**
      * The first few payload fields, for list previews. Skips the field that
-     * holds the email address, since that has its own column.
+     * holds the email address, since that has its own column. Each value is
+     * on one line and cut to `$length` characters, with "…" if it was longer.
      *
      * @return array<string, string>
      */
-    public function getPreview(int $limit = 3): array
+    public function getPreview(int $limit = 3, int $length = 60): array
     {
         $preview = [];
         foreach ($this->payload as $name => $value) {
@@ -111,7 +112,8 @@ class Submission extends Model
             if ($text === '' || ($this->email !== null && strcasecmp($text, $this->email) === 0)) {
                 continue;
             }
-            $preview[(string)$name] = mb_strimwidth(preg_replace('/\s+/', ' ', $text), 0, 80, '…');
+            $text = (string)preg_replace('/\s+/', ' ', $text);
+            $preview[(string)$name] = mb_strlen($text) > $length ? mb_substr($text, 0, $length) . '…' : $text;
         }
         return $preview;
     }
