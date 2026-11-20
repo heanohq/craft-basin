@@ -227,8 +227,8 @@ class Plugin extends BasePlugin
     {
         $manageForms = [
             self::PERMISSION_MANAGE_FORMS => [
-                'label' => Craft::t('basin', 'Set up forms on this site (Form Studio embed codes, reCAPTCHA version)'),
-                'info' => Craft::t('basin', 'Saved on this site only. Doesn’t change anything in Basin.'),
+                'label' => Craft::t('basin', 'Set up forms on this site'),
+                'info' => Craft::t('basin', 'Add Form Studio embed codes and choose each form’s reCAPTCHA version. Saved on this site only; doesn’t change anything in Basin.'),
             ],
             self::PERMISSION_EDIT_FORMS => [
                 'label' => Craft::t('basin', 'Create forms and change their settings in Basin'),
