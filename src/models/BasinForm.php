@@ -182,6 +182,22 @@ class BasinForm extends Model
     }
 
     /**
+     * The form's settings editor in the Control Panel (spec §6.7).
+     */
+    public function getSettingsCpUrl(): string
+    {
+        return UrlHelper::cpUrl('basin/forms/' . $this->uuid . '/settings');
+    }
+
+    /**
+     * A page of the form's settings in Basin, e.g. `notification_email_settings/edit`.
+     */
+    public function getBasinSettingsUrl(string $page): string
+    {
+        return sprintf(self::BASIN_FORM_URL, $this->id) . '/' . $page;
+    }
+
+    /**
      * The form's public spam-protection settings (spec §10.4).
      *
      * @return array{captcha: ?string, siteKey: ?string, scriptUrl: ?string, recaptchaVersion: ?string, honeypotField: string}

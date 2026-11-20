@@ -52,6 +52,8 @@ use yii\base\Event;
 class Plugin extends BasePlugin
 {
     public const PERMISSION_MANAGE_FORMS = 'basin-manageForms';
+    public const PERMISSION_EDIT_FORMS = 'basin-editForms';
+    public const PERMISSION_DELETE_FORMS = 'basin-deleteForms';
 
     public string $schemaVersion = '1.0.2';
     public bool $hasCpSettings = true;
@@ -225,6 +227,16 @@ class Plugin extends BasePlugin
     {
         $manageForms = [
             self::PERMISSION_MANAGE_FORMS => ['label' => Craft::t('basin', 'Manage form settings (Form Studio embed codes, reCAPTCHA version)')],
+            self::PERMISSION_EDIT_FORMS => [
+                'label' => Craft::t('basin', 'Create and edit forms in Basin'),
+                'info' => Craft::t('basin', 'Changes the linked Basin project directly.'),
+                'nested' => [
+                    self::PERMISSION_DELETE_FORMS => [
+                        'label' => Craft::t('basin', 'Delete forms'),
+                        'warning' => Craft::t('basin', 'Deleting a form also deletes all its submissions in Basin.'),
+                    ],
+                ],
+            ],
         ];
         $nested = [
             'basin-manageSubmissions' => ['label' => Craft::t('basin', 'Manage submissions (mark as read, spam or trash)')],
@@ -324,7 +336,9 @@ class Plugin extends BasePlugin
         Event::on(UrlManager::class, UrlManager::EVENT_REGISTER_CP_URL_RULES, function(RegisterUrlRulesEvent $event) {
             $event->rules['basin'] = 'basin/forms/index';
             $event->rules['basin/forms'] = 'basin/forms/index';
+            $event->rules['basin/forms/new'] = 'basin/forms/new';
             $event->rules['basin/forms/<uuid:[A-Za-z0-9]+>'] = 'basin/forms/view';
+            $event->rules['basin/forms/<uuid:[A-Za-z0-9]+>/settings'] = 'basin/forms/edit';
             $event->rules['basin/submissions'] = 'basin/submissions/index';
             $event->rules['basin/forms/<uuid:[A-Za-z0-9]+>/submissions'] = 'basin/submissions/index';
             $event->rules['basin/forms/<uuid:[A-Za-z0-9]+>/submissions/<id:\d+>'] = 'basin/submissions/view';

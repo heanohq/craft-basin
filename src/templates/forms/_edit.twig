@@ -1,0 +1,370 @@
+{% extends '_layouts/cp' %}
+{% import '_includes/forms' as forms %}
+
+{% set title = 'Edit “{name}”'|t('basin', { name: form.name }) %}
+{% set selectedSubnavItem = 'forms' %}
+{% set fullPageForm = loadError is null %}
+{% set crumbs = [
+    { label: settings.getNavLabel(), url: url('basin') },
+    { label: 'Forms'|t('basin'), url: url('basin/forms') },
+    { label: form.name, url: form.cpUrl },
+] %}
+
+{% block content %}
+    {% if loadError %}
+        <blockquote class="note warning">
+            <p>{{ 'Couldn’t load this form’s settings from Basin: {message}'|t('basin', { message: loadError }) }}</p>
+        </blockquote>
+    {% else %}
+        {{ actionInput('basin/forms/save-settings') }}
+        {{ hiddenInput('formUuid', form.uuid) }}
+
+        {% if createdNotice %}
+            <blockquote class="note" style="margin-bottom: var(--l);">
+                <p>{{ createdNotice }}</p>
+            </blockquote>
+        {% endif %}
+
+        {# General #}
+        <h2>{{ 'General'|t('basin') }}</h2>
+
+        {{ forms.textField({
+            label: 'Name'|t('basin'),
+            instructions: 'Only shown in the Control Panel and in Basin, not to visitors.'|t('basin'),
+            id: 'basin-name',
+            name: 'fields[name]',
+            value: values.name,
+            required: true,
+            maxlength: 255,
+            errors: errors.name ?? null,
+        }) }}
+
+        {{ forms.timeZoneField({
+            label: 'Timezone'|t('basin'),
+            instructions: 'Used for submission dates in Basin’s emails and exports.'|t('basin'),
+            id: 'basin-timezone',
+            name: 'fields[timezone]',
+            value: values.timezone,
+            errors: errors.timezone ?? null,
+        }) }}
+
+        <hr>
+
+        {# Notifications #}
+        <h2>{{ 'Notifications'|t('basin') }}</h2>
+        <p class="light">{{ 'Basin asks new addresses to confirm by email before they receive notifications. The Basin account owner’s address doesn’t need confirming.'|t('basin') }}</p>
+
+        {% set recipientFields = {
+            notification_emails: { label: 'Send to'|t('basin'), instructions: 'Who Basin emails when someone submits the form. Separate addresses with commas. Leave blank to send them to the Basin account owner.'|t('basin') },
+            notification_cc_emails: { label: 'CC'|t('basin'), instructions: null },
+            notification_bcc_emails: { label: 'BCC'|t('basin'), instructions: null },
+        } %}
+        {% for key, field in recipientFields %}
+            {% set waiting = pending[key] ?? [] %}
+            {% set warning = null %}
+            {% if waiting %}
+                {% set warning = (key == 'notification_emails' and values[key] == ''
+                    ? 'Waiting for {emails} to confirm. Until someone does, this form doesn’t email anyone.'
+                    : 'Waiting for {emails} to confirm.')|t('basin', { emails: waiting|join(', ') }) %}
+            {% endif %}
+            {{ forms.textField({
+                label: field.label,
+                instructions: field.instructions,
+                id: 'basin-' ~ key|replace('_', '-'),
+                name: 'fields[' ~ key ~ ']',
+                value: values[key],
+                placeholder: 'team@example.com'|t('basin'),
+                warning: warning,
+                errors: errors[key] ?? null,
+                inputAttributes: { data: { original: basinSettings[key] ?? '' } },
+            }) }}
+        {% endfor %}
+
+        {{ forms.textField({
+            label: 'Subject'|t('basin'),
+            instructions: 'Leave blank for Basin’s default. Basin’s merge tags work here.'|t('basin'),
+            id: 'basin-notification-subject',
+            name: 'fields[notification_subject]',
+            value: values.notification_subject,
+            errors: errors.notification_subject ?? null,
+        }) }}
+
+        {{ forms.textField({
+            label: 'From name'|t('basin'),
+            instructions: 'Leave blank for “Basin”.'|t('basin'),
+            id: 'basin-notification-from-name',
+            name: 'fields[notification_from_name]',
+            value: values.notification_from_name,
+            errors: errors.notification_from_name ?? null,
+        }) }}
+
+        {{ forms.lightswitchField({
+            label: 'Leave the submitter out of reply-all'|t('basin'),
+            instructions: 'Normally, replying to all on a notification includes the person who submitted the form.'|t('basin'),
+            id: 'basin-exclude-submitter',
+            name: 'fields[exclude_submitter_from_reply]',
+            on: values.exclude_submitter_from_reply,
+        }) }}
+
+        <hr>
+
+        {# After submitting #}
+        <h2>{{ 'After submitting'|t('basin') }}</h2>
+
+        {{ forms.textField({
+            label: 'Redirect URL'|t('basin'),
+            instructions: 'Where visitors go after submitting. Leave blank to show Basin’s thank-you page.'|t('basin'),
+            id: 'basin-redirect-url',
+            name: 'fields[redirect_url]',
+            value: values.redirect_url,
+            type: 'url',
+            placeholder: 'https://example.com/thanks',
+            errors: errors.redirect_url ?? null,
+        }) }}
+
+        <div class="field">
+            <div class="heading"><label>{{ 'Thank-you page'|t('basin') }}</label></div>
+            <div class="instructions"><p>{{ 'Shown when there’s no redirect URL. Leave a field blank for Basin’s default.'|t('basin') }}</p></div>
+        </div>
+
+        {{ forms.textField({
+            label: 'Heading'|t('basin'),
+            id: 'basin-redirect-heading',
+            name: 'fields[redirect_heading]',
+            value: values.redirect_heading,
+            placeholder: 'Thanks for the message!'|t('basin'),
+            errors: errors.redirect_heading ?? null,
+        }) }}
+
+        {{ forms.textareaField({
+            label: 'Message'|t('basin'),
+            id: 'basin-redirect-message',
+            name: 'fields[redirect_message]',
+            value: values.redirect_message,
+            rows: 2,
+            placeholder: 'Your submission was successful'|t('basin'),
+            errors: errors.redirect_message ?? null,
+        }) }}
+
+        {{ forms.textField({
+            label: 'Button text'|t('basin'),
+            id: 'basin-redirect-button-text',
+            name: 'fields[redirect_button_text]',
+            value: values.redirect_button_text,
+            placeholder: 'Back to home'|t('basin'),
+            errors: errors.redirect_button_text ?? null,
+        }) }}
+
+        <div class="flex" style="align-items: flex-start; gap: var(--xl);">
+            {{ forms.colorField({
+                label: 'Button colour'|t('basin'),
+                id: 'basin-redirect-button-bg',
+                name: 'fields[redirect_button_background_color]',
+                value: values.redirect_button_background_color,
+                errors: errors.redirect_button_background_color ?? null,
+            }) }}
+            {{ forms.colorField({
+                label: 'Button text colour'|t('basin'),
+                id: 'basin-redirect-button-color',
+                name: 'fields[redirect_button_text_color]',
+                value: values.redirect_button_text_color,
+                errors: errors.redirect_button_text_color ?? null,
+            }) }}
+        </div>
+
+        {{ forms.lightswitchField({
+            label: 'Always respond with JSON'|t('basin'),
+            instructions: 'Basin’s “Enable AJAX”. Only turn this on if every page submits this form with JavaScript: otherwise visitors see raw JSON instead of the thank-you page or redirect.'|t('basin'),
+            id: 'basin-use-ajax',
+            name: 'fields[use_ajax]',
+            on: values.use_ajax,
+        }) }}
+
+        <hr>
+
+        {# Auto-reply #}
+        <h2>{{ 'Auto-reply'|t('basin') }}</h2>
+
+        {{ forms.lightswitchField({
+            label: 'Send an auto-reply'|t('basin'),
+            instructions: 'Emails the person who submitted the form. The form needs a field named `email` or `email_address`.'|t('basin'),
+            id: 'basin-autoreply',
+            name: 'fields[autoreply]',
+            on: values.autoreply,
+            toggle: 'basin-autoreply-fields',
+        }) }}
+
+        <div id="basin-autoreply-fields" class="{{ values.autoreply ? '' : 'hidden' }}">
+            {{ forms.textField({
+                label: 'Subject'|t('basin'),
+                instructions: 'Leave blank for Basin’s default. Basin’s merge tags work in every auto-reply field.'|t('basin'),
+                id: 'basin-autoreply-subject',
+                name: 'fields[autoreply_subject]',
+                value: values.autoreply_subject,
+                errors: errors.autoreply_subject ?? null,
+            }) }}
+
+            {{ forms.textField({
+                label: 'From name'|t('basin'),
+                instructions: 'Leave blank for “Basin”.'|t('basin'),
+                id: 'basin-autoreply-from-name',
+                name: 'fields[autoreply_from_name]',
+                value: values.autoreply_from_name,
+                errors: errors.autoreply_from_name ?? null,
+            }) }}
+
+            {{ forms.textField({
+                label: 'Reply-to email'|t('basin'),
+                instructions: 'Where replies to the auto-reply go. Leave blank for the Basin account owner.'|t('basin'),
+                id: 'basin-autoreply-email',
+                name: 'fields[autoreply_email]',
+                value: values.autoreply_email,
+                type: 'email',
+                errors: errors.autoreply_email ?? null,
+            }) }}
+
+            {{ forms.textField({
+                label: 'Greeting'|t('basin'),
+                id: 'basin-autoreply-greeting',
+                name: 'fields[autoreply_greeting]',
+                value: values.autoreply_greeting,
+                placeholder: 'Hello,'|t('basin'),
+                errors: errors.autoreply_greeting ?? null,
+            }) }}
+
+            {{ forms.textareaField({
+                label: 'Message'|t('basin'),
+                id: 'basin-autoreply-body',
+                name: 'fields[autoreply_body]',
+                value: values.autoreply_body,
+                rows: 6,
+                errors: errors.autoreply_body ?? null,
+            }) }}
+
+            {{ forms.textField({
+                label: 'Signature name'|t('basin'),
+                instructions: 'Appears under the message. Leave blank to leave it out.'|t('basin'),
+                id: 'basin-autoreply-name',
+                name: 'fields[autoreply_name]',
+                value: values.autoreply_name,
+                errors: errors.autoreply_name ?? null,
+            }) }}
+
+            {{ forms.textField({
+                label: 'Signature title or tagline'|t('basin'),
+                instructions: 'Appears after the signature name. Leave blank to leave it out.'|t('basin'),
+                id: 'basin-autoreply-title',
+                name: 'fields[autoreply_title]',
+                value: values.autoreply_title,
+                errors: errors.autoreply_title ?? null,
+            }) }}
+        </div>
+
+        <hr>
+
+        {# Data #}
+        <h2>{{ 'Data'|t('basin') }}</h2>
+
+        {{ forms.textField({
+            label: 'Keep submissions for'|t('basin'),
+            instructions: 'Days, from 1 to {max}. Basin deletes older submissions.'|t('basin', { max: 3650 }),
+            id: 'basin-retention-days',
+            name: 'fields[retention_days]',
+            value: values.retention_days,
+            type: 'number',
+            min: 1,
+            max: 3650,
+            size: 6,
+            unit: 'days'|t('basin'),
+            errors: errors.retention_days ?? null,
+        }) }}
+
+        <hr>
+
+        {# Managed in Basin #}
+        <h2>{{ 'Managed in Basin'|t('basin') }}</h2>
+
+        <div class="field">
+            <div class="heading"><label>{{ 'Spam protection'|t('basin') }}</label></div>
+            <div class="input">
+                <p>{% include 'basin/forms/_spam' %}</p>
+                <p><a href="{{ form.basinSpamUrl }}" target="_blank" rel="noopener" data-icon="external">{{ 'Change in Basin'|t('basin') }}</a></p>
+            </div>
+        </div>
+
+        <div class="field">
+            <div class="heading"><label>{{ 'Webhooks'|t('basin') }}</label></div>
+            <div class="input">
+                <p>{{ form.webhookCount ? '{num, plural, =1{1 webhook} other{# webhooks}}'|t('basin', { num: form.webhookCount }) : 'None'|t('basin') }}</p>
+                <p><a href="{{ form.getBasinSettingsUrl('integrations/zapier') }}" target="_blank" rel="noopener" data-icon="external">{{ 'Change in Basin'|t('basin') }}</a></p>
+            </div>
+        </div>
+
+        <p class="light">{{ 'Email design, mail templates and sending domains are also set in Basin.'|t('basin') }}</p>
+    {% endif %}
+{% endblock %}
+
+{% block details %}
+    {% if loadError is null and canDelete %}
+        <div class="meta">
+            <div class="field" style="padding: var(--m) var(--m) 0;">
+                <h2 style="margin: 0 0 var(--s);">{{ 'Delete form'|t('basin') }}</h2>
+                <p>{{ 'Deletes the form and all its submissions ({inbox} in the inbox, {spam} in spam, {trash} in the trash) from Basin. Its endpoint stops working straight away. This can’t be undone.'|t('basin', {
+                    inbox: form.inboxCount|number,
+                    spam: form.spamCount|number,
+                    trash: form.trashCount|number,
+                }) }}</p>
+                <button type="button" class="btn caution" id="basin-delete-open">{{ 'Delete form…'|t('basin') }}</button>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% if loadError is null %}
+    {% js %}
+        (() => {
+            // Changing a working recipients list stops notifications until the new addresses confirm (spec §6.7).
+            const to = document.getElementById('basin-notification-emails');
+            const norm = (v) => v.toLowerCase().split(/[\s,;]+/).filter(Boolean).sort().join(',');
+            $('#main-form').on('submit', (event) => {
+                if (to && to.dataset.original.trim() !== '' && norm(to.value) !== norm(to.dataset.original)) {
+                    const message = {{ 'Basin will email any new addresses to confirm. Until they do, they won’t receive notifications. Save anyway?'|t('basin')|json_encode|raw }};
+                    if (!confirm(message)) {
+                        event.preventDefault();
+                        event.stopImmediatePropagation();
+                    }
+                }
+            });
+
+            const open = document.getElementById('basin-delete-open');
+            if (open) {
+                open.addEventListener('click', () => {
+                    const name = {{ form.name|json_encode|raw }};
+                    const typed = prompt({{ 'This deletes “{name}” and all its submissions from Basin, and can’t be undone. Type the form’s name to confirm.'|t('basin', { name: form.name })|json_encode|raw }});
+                    if (typed === null) {
+                        return;
+                    }
+                    if (typed.trim() !== name) {
+                        Craft.cp.displayError({{ 'The name didn’t match, so the form wasn’t deleted.'|t('basin')|json_encode|raw }});
+                        return;
+                    }
+                    // Posted on its own, not with the settings form.
+                    const del = document.createElement('form');
+                    del.method = 'post';
+                    del.hidden = true;
+                    const fields = {
+                        [Craft.csrfTokenName]: Craft.csrfTokenValue,
+                        action: 'basin/forms/delete',
+                        formUuid: {{ form.uuid|json_encode|raw }},
+                        confirmName: typed.trim(),
+                    };
+                    for (const [key, value] of Object.entries(fields)) {
+                        del.appendChild(Object.assign(document.createElement('input'), { type: 'hidden', name: key, value }));
+                    }
+                    document.body.appendChild(del);
+                    del.submit();
+                });
+            }
+        })();
+    {% endjs %}
+{% endif %}

@@ -9,7 +9,12 @@
 ] %}
 
 {% block actionButton %}
-    <a class="btn" href="{{ form.basinUrl }}" target="_blank" rel="noopener" data-icon="external">{{ 'Open in Basin'|t('basin') }}</a>
+    <div class="flex">
+        <a class="btn" href="{{ form.basinUrl }}" target="_blank" rel="noopener" data-icon="external">{{ 'Open in Basin'|t('basin') }}</a>
+        {% if canEdit %}
+            <a class="btn submit" href="{{ form.settingsCpUrl }}">{{ 'Edit settings'|t('basin') }}</a>
+        {% endif %}
+    </div>
 {% endblock %}
 
 {% block content %}
@@ -219,6 +224,10 @@
         </div>
     </div>
     <div class="meta read-only">
-        <p class="light">{{ 'To change these settings, edit the form in Basin.'|t('basin') }}</p>
+        {% if canEdit %}
+            <p><a href="{{ form.settingsCpUrl }}">{{ 'Edit settings'|t('basin') }}</a></p>
+        {% else %}
+            <p class="light">{{ 'To change these settings, edit the form in Basin.'|t('basin') }}</p>
+        {% endif %}
     </div>
 {% endblock %}

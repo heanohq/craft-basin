@@ -7,6 +7,12 @@
     { label: settings.getNavLabel(), url: url('basin') },
 ] %}
 
+{% block actionButton %}
+    {% if canEdit and state == 'ready' and project %}
+        <a class="btn submit add icon" href="{{ url('basin/forms/new') }}">{{ 'New form'|t('basin') }}</a>
+    {% endif %}
+{% endblock %}
+
 {% block content %}
     {% include 'basin/_includes/state' %}
 
@@ -14,7 +20,10 @@
         {% if basinForms is empty %}
             <div class="zilch basin-empty">
                 <p>{{ 'There are no Basin forms yet.'|t('basin') }}</p>
-                {% if currentUser.admin %}
+                {% if canEdit and project %}
+                    <p class="light">{{ 'Create one here, or in the “{name}” project in Basin.'|t('basin', { name: project.name }) }}</p>
+                    <p><a class="btn submit add icon" href="{{ url('basin/forms/new') }}">{{ 'New form'|t('basin') }}</a></p>
+                {% elseif currentUser.admin %}
                     {# Admins link the project, so they need its name. Basin's new-form page can't preselect it. #}
                     <p class="light">{{ 'Forms you create in, or move to, the “{name}” project in Basin appear here automatically.'|t('basin', { name: project.name ?? '' }) }}</p>
                     <p><a class="btn" href="https://usebasin.com/app/forms/new" target="_blank" rel="noopener" data-icon="external">{{ 'Create a form in Basin'|t('basin') }}</a></p>

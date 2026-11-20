@@ -6,6 +6,7 @@ use Craft;
 use craft\base\Component;
 use Heano\Basin\Exception\ApiException;
 use Heano\Basin\Exception\ApiUnavailableException;
+use Heano\Basin\Exception\NotFoundException;
 use heano\basin\helpers\StudioEmbed;
 use heano\basin\models\BasinForm;
 use heano\basin\Plugin;
@@ -291,6 +292,116 @@ class Forms extends Component
             return null;
         }
         return Plugin::getInstance()->getFormSettings()->getHostedFormId($uuid) === $detected ? null : $detected;
+    }
+
+    // Managing forms in Basin (spec §6.7) -----------------------------------
+
+    /**
+     * A form's editable settings, fetched fresh from Basin. They include
+     * email addresses, so they're never cached or logged.
+     *
+     * @return array<string, mixed>
+     * @throws ApiException
+     * @throws NotFoundException if the form is no longer in the linked project
+     */
+    public function getEditableSettings(BasinForm $form): array
+    {
+        return $this->requireInLinkedProject(Plugin::getInstance()->getApi()->getClient()->getFormSettings($form->id));
+    }
+
+    /**
+     * Creates a form in the linked project.
+     *
+     * @return array{form: BasinForm, settings: array<string, mixed>}
+     * @throws ApiException
+     */
+    public function createForm(string $name, string $notificationEmails, string $timezone): array
+    {
+        $projectId = Plugin::getInstance()->getSettings()->getProjectId();
+        if ($projectId === null) {
+            throw new NotFoundException(Craft::t('basin', 'No Basin project is linked.'));
+        }
+
+        $fields = ['timezone' => $timezone];
+        if (trim($notificationEmails) !== '') {
+            $fields['notification_emails'] = $notificationEmails;
+        }
+
+        $client = Plugin::getInstance()->getApi()->getClient();
+        $row = $client->createForm($name, $projectId, $fields);
+        Craft::info("Created Basin form {$row['id']} in project $projectId.", 'basin');
+        $this->afterChange();
+
+        $form = BasinForm::fromApi($row);
+        try {
+            $settings = $client->getFormSettings($form->id);
+        } catch (ApiException) {
+            // Only used for the notice about who gets notifications.
+            $settings = [];
+        }
+        return ['form' => $form, 'settings' => $settings];
+    }
+
+    /**
+     * Sends changed settings to Basin, after checking the form is still in
+     * the linked project. `$changes` comes from
+     * {@see \heano\basin\helpers\FormEditor::changes()}, so it only holds
+     * editable fields, never `project_id`.
+     *
+     * @param array<string, mixed> $changes
+     * @throws ApiException
+     */
+    public function updateForm(BasinForm $form, array $changes): void
+    {
+        if ($changes === []) {
+            return;
+        }
+        $this->getEditableSettings($form);
+        Plugin::getInstance()->getApi()->getClient()->updateForm($form->id, $changes);
+        Craft::info("Updated Basin form {$form->id}: " . implode(', ', array_keys($changes)) . '.', 'basin');
+        $this->afterChange();
+    }
+
+    /**
+     * Permanently deletes a form in Basin, with all its submissions, and the
+     * plugin's own settings for it.
+     *
+     * @throws ApiException
+     */
+    public function deleteForm(BasinForm $form): void
+    {
+        $this->getEditableSettings($form);
+        Plugin::getInstance()->getApi()->getClient()->deleteForm($form->id);
+        Craft::info("Deleted Basin form {$form->id}.", 'basin');
+        Plugin::getInstance()->getFormSettings()->delete($form->uuid);
+        $this->afterChange();
+    }
+
+    /**
+     * @param array<string, mixed> $data A form from Basin
+     * @return array<string, mixed>
+     * @throws NotFoundException
+     */
+    private function requireInLinkedProject(array $data): array
+    {
+        $projectId = Plugin::getInstance()->getSettings()->getProjectId();
+        if ($projectId === null || (int)($data['project_id'] ?? 0) !== $projectId) {
+            throw new NotFoundException(Craft::t('basin', 'This form is no longer in the linked Basin project.'));
+        }
+        return $data;
+    }
+
+    /**
+     * Clears the forms cache and refreshes the last-known-good copy.
+     */
+    private function afterChange(): void
+    {
+        $this->invalidateCaches();
+        try {
+            $this->getForms(true);
+        } catch (ApiException) {
+            // The next request tries again.
+        }
     }
 
     public function invalidateCaches(): void

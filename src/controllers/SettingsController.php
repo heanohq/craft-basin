@@ -85,6 +85,7 @@ class SettingsController extends Controller
             'autoProtect' => (bool)($posted['autoProtect'] ?? false),
             'recaptchaVersion' => (string)($posted['recaptchaVersion'] ?? 'v3'),
             'navLabel' => (string)($posted['navLabel'] ?? ''),
+            'defaultNotificationEmail' => (string)($posted['defaultNotificationEmail'] ?? ''),
             'showUnreadBadge' => (bool)($posted['showUnreadBadge'] ?? false),
         ];
         foreach ($overrides as $name) {

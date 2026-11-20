@@ -86,6 +86,15 @@ class FormSettings extends Component
     }
 
     /**
+     * Removes a form's settings, e.g. when the form is deleted.
+     */
+    public function delete(string $uuid): void
+    {
+        Db::delete(self::TABLE, ['uuid' => $uuid]);
+        $this->rows = null;
+    }
+
+    /**
      * Removes settings for forms that haven't been in Basin for a while.
      *
      * Checks Basin's current list first, so a form that still exists is never

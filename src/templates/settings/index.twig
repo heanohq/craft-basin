@@ -114,6 +114,19 @@
         disabled: readOnly or 'allowDeletion' in overrides,
     }) }}
 
+    {{ forms.autosuggestField({
+        label: 'Default notification email'|t('basin'),
+        instructions: 'Filled in as the recipients of forms created in the Control Panel. Separate addresses with commas, or use an environment variable. Leave blank to send notifications to the Basin account owner. New addresses have to confirm by email before they receive notifications.'|t('basin'),
+        id: 'basin-defaultNotificationEmail',
+        name: 'settings[defaultNotificationEmail]',
+        value: _self.value('defaultNotificationEmail', settings, overrides, plugin),
+        suggestEnvVars: true,
+        placeholder: 'team@example.com'|t('basin'),
+        errors: settings.getErrors('defaultNotificationEmail'),
+        warning: _self.overrideWarning('defaultNotificationEmail', overrides),
+        disabled: readOnly or 'defaultNotificationEmail' in overrides,
+    }) }}
+
     <hr>
     <h2>{{ 'Front end'|t('basin') }}</h2>
 

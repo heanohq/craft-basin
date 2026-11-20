@@ -1,0 +1,47 @@
+{% extends '_layouts/cp' %}
+{% import '_includes/forms' as forms %}
+
+{% set title = 'New form'|t('basin') %}
+{% set selectedSubnavItem = 'forms' %}
+{% set fullPageForm = true %}
+{% set crumbs = [
+    { label: settings.getNavLabel(), url: url('basin') },
+    { label: 'Forms'|t('basin'), url: url('basin/forms') },
+] %}
+
+{% block content %}
+    {{ actionInput('basin/forms/create') }}
+
+    <p>{{ 'Creates a form in the “{project}” project in Basin. You can change its other settings once it’s created.'|t('basin', { project: project.name }) }}</p>
+
+    {{ forms.textField({
+        label: 'Name'|t('basin'),
+        instructions: 'Only shown in the Control Panel and in Basin, not to visitors.'|t('basin'),
+        id: 'basin-name',
+        name: 'fields[name]',
+        value: values.name ?? '',
+        required: true,
+        autofocus: true,
+        maxlength: 255,
+        errors: errors.name ?? null,
+    }) }}
+
+    {{ forms.textField({
+        label: 'Notification email'|t('basin'),
+        instructions: 'Who Basin emails when someone submits the form. Separate addresses with commas. Leave blank to send them to the Basin account owner. Basin asks new addresses to confirm by email before they receive anything.'|t('basin'),
+        id: 'basin-notification-emails',
+        name: 'fields[notification_emails]',
+        value: values.notification_emails ?? '',
+        placeholder: 'team@example.com'|t('basin'),
+        errors: errors.notification_emails ?? null,
+    }) }}
+
+    {{ forms.timeZoneField({
+        label: 'Timezone'|t('basin'),
+        instructions: 'Used for submission dates in Basin’s emails and exports.'|t('basin'),
+        id: 'basin-timezone',
+        name: 'fields[timezone]',
+        value: values.timezone ?? 'UTC',
+        errors: errors.timezone ?? null,
+    }) }}
+{% endblock %}
