@@ -4,7 +4,7 @@
 
 ### Added
 - Plugin settings: Basin Account API key (environment variable), linked Basin project (chosen from your projects, or an environment variable that holds one’s ID), menu label, permanent-deletion toggle, cache duration and missing-form tracking.
-- “Test connection” button on the settings screen.
+- The settings screen checks the API key as soon as it’s entered and lists the account’s projects, so a first setup needs only one save. A “Test connection” button checks it again.
 - “Basin data” option in Utilities → Clear Caches.
 - Forms screen listing every form in the linked Basin project, with spam protection, endpoint URL, search, and inbox and spam counts that link to the form’s submissions.
 - Form page with the endpoint URL, settings summary, ready-to-paste template code and an “Open in Basin” link. It warns when Basin’s “Enable AJAX” is on, since visitors without JavaScript would see raw JSON, and links straight to the form’s spam settings in Basin.

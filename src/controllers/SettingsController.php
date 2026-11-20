@@ -56,7 +56,7 @@ class SettingsController extends Controller
             'overrides' => $plugin->getConfigOverrides(),
             'readOnly' => !Craft::$app->getConfig()->getGeneral()->allowAdminChanges,
             'projects' => $projects,
-            'projectOptions' => $this->projectOptions($projects, $settings, $connectionError === null),
+            'projectOptions' => $this->projectOptions($projects, $this->savedProjectId($settings), $settings->getApiKey() !== '' && $connectionError === null),
             'linkedProject' => $linkedProject,
             'connectionError' => $connectionError,
         ]);
@@ -131,12 +131,27 @@ class SettingsController extends Controller
         }
 
         $result = Plugin::getInstance()->getApi()->testConnection($apiKey !== '' ? $apiKey : null);
+        $projectId = trim((string)$this->request->getBodyParam('projectId', ''));
 
         return $this->asJson([
             'success' => $result['success'],
             'message' => $result['message'],
             'projects' => array_map(fn(Project $p) => ['id' => $p->id, 'name' => $p->name], $result['projects']),
+            // The project dropdown's options for this key, so it can be refilled.
+            'projectOptions' => $result['success'] ? $this->projectOptions($result['projects'], $projectId, true) : null,
         ]);
+    }
+
+    /**
+     * The project value the settings page shows: the one in effect when
+     * config/basin.php sets it, otherwise the saved (or just submitted) one.
+     */
+    private function savedProjectId(Settings $settings): string
+    {
+        $plugin = Plugin::getInstance();
+        return trim((string)(in_array('projectId', $plugin->getConfigOverrides(), true)
+            ? $plugin->getSettings()->projectId
+            : $settings->projectId));
     }
 
     /**
@@ -144,14 +159,11 @@ class SettingsController extends Controller
      * of the project IDs.
      *
      * @param Project[] $projects
+     * @param string $current The chosen value, kept as an option
+     * @param bool $loaded Whether Basin answered, so an empty list means no projects
      */
-    private function projectOptions(array $projects, Settings $settings, bool $loaded): array
+    private function projectOptions(array $projects, string $current, bool $loaded): array
     {
-        $plugin = Plugin::getInstance();
-        $current = trim((string)(in_array('projectId', $plugin->getConfigOverrides(), true)
-            ? $plugin->getSettings()->projectId
-            : $settings->projectId));
-
         $byId = [];
         foreach ($projects as $project) {
             $byId[$project->id] = $project->name;
@@ -166,9 +178,11 @@ class SettingsController extends Controller
         }
 
         return ProjectOptions::build($byId, $current, $env, [
-            'choose' => $byId
-                ? Craft::t('basin', 'Choose a project')
-                : Craft::t('basin', 'Test the API key to load your projects'),
+            'choose' => match (true) {
+                (bool)$byId => Craft::t('basin', 'Choose a project'),
+                $loaded => Craft::t('basin', 'This Basin account has no projects'),
+                default => Craft::t('basin', 'Enter your API key to load your projects'),
+            },
             'unknown' => $loaded && $byId
                 ? Craft::t('basin', 'Not found in your Basin account')
                 : Craft::t('basin', 'Saved project'),

@@ -193,27 +193,56 @@
     const button = document.getElementById('basin-test-connection');
     const spinner = document.getElementById('basin-test-spinner');
     const result = document.getElementById('basin-test-result');
-    const input = document.querySelector('#basin-apiKey input, input#basin-apiKey');
-
-    // Lets a first-time setup choose a project before saving the key.
-    const addProjects = (projects) => {
+    // Craft's autosuggest replaces its input when it mounts, so look it up each time.
+    const keyInput = () => document.querySelector('input#basin-apiKey');
+    const projectSelect = () => {
         const selectize = $('#basin-projectId').data('selectize');
-        if (!selectize || selectize.isDisabled) {
+        return selectize && !selectize.isDisabled ? selectize : null;
+    };
+
+    // The key the project list on the page came from, so it isn't fetched again.
+    let loadedKey = {{ (projects is not empty ? _self.value('apiKey', settings, overrides, plugin)|trim : '')|json_encode|raw }};
+    let request = 0;
+
+    // The prompt shown while no project is chosen.
+    const setPrompt = (text) => {
+        const selectize = projectSelect();
+        if (!selectize || !selectize.options['']) {
             return;
         }
-        for (const project of projects) {
-            const value = String(project.id);
-            if (!selectize.options[value]) {
-                selectize.addOption({ value, text: project.name, hint: value });
+        selectize.updateOption('', { ...selectize.options[''], text });
+        selectize.settings.placeholder = text;
+        selectize.updatePlaceholder();
+    };
+
+    // Rebuilds the dropdown from the options the server sends for this key:
+    // its projects, the env vars that hold one of them, and the chosen value.
+    const setOptions = (options) => {
+        const selectize = projectSelect();
+        if (!selectize) {
+            return;
+        }
+        const chosen = selectize.getValue();
+        selectize.clearOptions(true);
+        let group;
+        for (const option of options) {
+            if (option.optgroup) {
+                group = option.optgroup;
+                selectize.addOptionGroup(group, { label: group, value: group });
+                continue;
+            }
+            const data = { value: option.value, text: option.label, hint: option.data?.hint ?? '', optgroup: group };
+            if (selectize.options[option.value]) {
+                selectize.updateOption(option.value, data);
+            } else {
+                selectize.addOption(data);
             }
         }
-        const empty = selectize.options[''];
-        if (empty && projects.length) {
-            const text = Craft.t('basin', 'Choose a project');
-            selectize.updateOption('', { ...empty, text });
-            selectize.settings.placeholder = text;
-            selectize.updatePlaceholder();
+        const prompt = options.find(option => option.value === '');
+        if (prompt) {
+            setPrompt(prompt.label);
         }
+        selectize.setValue(chosen, true);
         selectize.refreshOptions(false);
     };
 
@@ -222,25 +251,66 @@
         result.textContent = message;
     };
 
-    button.addEventListener('click', async () => {
+    const check = async () => {
+        // A disabled field (read-only, or set in config/basin.php) checks the saved key.
+        const input = keyInput();
+        const apiKey = input && !input.disabled ? input.value.trim() : '';
+        const id = ++request;
         button.disabled = true;
         spinner.classList.remove('hidden');
         result.textContent = '';
+        setPrompt(Craft.t('basin', 'Loading projects…'));
         try {
+            const selectize = projectSelect();
             const { data } = await Craft.sendActionRequest('POST', 'basin/settings/test-connection', {
-                // A disabled field (read-only, or set in config/basin.php) tests the saved key.
-                data: { apiKey: input && !input.disabled ? input.value : '' },
+                data: { apiKey, projectId: selectize ? selectize.getValue() : '' },
             });
+            if (id !== request) {
+                return;
+            }
             show(data.success, data.message);
             if (data.success) {
-                addProjects(data.projects || []);
+                loadedKey = apiKey;
+                if (data.projectOptions) {
+                    setOptions(data.projectOptions);
+                }
+            } else {
+                setPrompt(Craft.t('basin', 'Couldn’t load projects. Check the API key.'));
             }
         } catch (e) {
+            if (id !== request) {
+                return;
+            }
             show(false, e?.response?.data?.message || Craft.t('basin', 'Something went wrong.'));
+            setPrompt(Craft.t('basin', 'Couldn’t load projects. Check the API key.'));
         } finally {
-            button.disabled = false;
-            spinner.classList.add('hidden');
+            if (id === request) {
+                button.disabled = false;
+                spinner.classList.add('hidden');
+            }
         }
-    });
+    };
+
+    button.addEventListener('click', check);
+
+    // Loads the projects as soon as a key is entered, so the project can be
+    // chosen before saving. Only env var references are accepted.
+    const keyField = document.getElementById('basin-apiKey-field');
+    if (keyField) {
+        let timer;
+        const keyChanged = (delay) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                const input = keyInput();
+                const apiKey = input && !input.disabled ? input.value.trim() : '';
+                if (/^\$[A-Za-z_][A-Za-z0-9_]*$/.test(apiKey) && apiKey !== loadedKey) {
+                    check();
+                }
+            }, delay);
+        };
+        keyField.addEventListener('input', () => keyChanged(800));
+        keyField.addEventListener('change', () => keyChanged(0));
+        keyField.addEventListener('focusout', () => keyChanged(0));
+    }
 })();
 {% endjs %}
