@@ -28,9 +28,7 @@
 
     {{ forms.textField({
         label: 'Notification email'|t('basin'),
-        instructions: (newFormNotificationEmail
-            ? 'Who Basin emails when someone submits the form. Filled in from the plugin’s “New form notification email” setting. Separate addresses with commas. Basin asks new addresses to confirm by email before they receive anything.'
-            : 'Who Basin emails when someone submits the form. Separate addresses with commas. If you leave it blank, notifications go to the Basin account owner. Basin asks new addresses to confirm by email before they receive anything.')|t('basin'),
+        instructions: 'Who Basin emails when someone submits the form. Separate addresses with commas. If you leave it blank, notifications go to the Basin account owner. Basin asks new addresses to confirm by email before they receive anything.'|t('basin'),
         id: 'basin-notification-emails',
         name: 'fields[notification_emails]',
         value: values.notification_emails ?? '',

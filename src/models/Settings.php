@@ -5,7 +5,6 @@ namespace heano\basin\models;
 use Craft;
 use craft\base\Model;
 use craft\helpers\App;
-use heano\basin\helpers\FormEditor;
 
 /**
  * Basin plugin settings (stored in project config; spec §5).
@@ -52,13 +51,6 @@ class Settings extends Model
     /** Whether to show the unread count on the CP nav item (spec §15). */
     public bool $showUnreadBadge = true;
 
-    /**
-     * Notification recipients filled in for forms created from the CP
-     * (spec §6.7). Comma-separated addresses, or an env var reference.
-     * Blank = Basin's default, the Basin account owner.
-     */
-    public string $newFormNotificationEmail = '';
-
     /** Custom label for the main CP nav item. Blank = "Basin". */
     public string $navLabel = '';
 
@@ -66,9 +58,8 @@ class Settings extends Model
     protected function defineRules(): array
     {
         return [
-            [['apiKey', 'projectId', 'navLabel', 'newFormNotificationEmail'], 'trim'],
-            [['apiKey', 'projectId', 'navLabel', 'newFormNotificationEmail'], 'string'],
-            ['newFormNotificationEmail', 'validateEmails'],
+            [['apiKey', 'projectId', 'navLabel'], 'trim'],
+            [['apiKey', 'projectId', 'navLabel'], 'string'],
             ['apiKey', 'validateEnvReference'],
             ['projectId', 'validateProjectId'],
             ['navLabel', 'string', 'max' => 60],
@@ -108,33 +99,6 @@ class Settings extends Model
         if (!ctype_digit($value)) {
             $this->addError($attribute, Craft::t('basin', 'Choose a project, or enter an environment variable.'));
         }
-    }
-
-    /**
-     * Each address must be valid, including when it comes from an env var.
-     */
-    public function validateEmails(string $attribute): void
-    {
-        $value = $this->$attribute;
-        if ($value === '') {
-            return;
-        }
-        if (str_starts_with($value, '$') && App::env(substr($value, 1)) === null) {
-            $this->addError($attribute, Craft::t('basin', 'The environment variable {name} isn’t set.', ['name' => $value]));
-            return;
-        }
-        $invalid = FormEditor::firstInvalidEmail(FormEditor::splitEmails((string)App::parseEnv($value)));
-        if ($invalid !== null) {
-            $this->addError($attribute, Craft::t('basin', '“{email}” isn’t a valid email address.', ['email' => $invalid]));
-        }
-    }
-
-    /**
-     * The default notification recipients, comma-separated, or ''.
-     */
-    public function getNewFormNotificationEmail(): string
-    {
-        return implode(', ', FormEditor::splitEmails((string)App::parseEnv($this->newFormNotificationEmail)));
     }
 
     public function getApiKey(): string

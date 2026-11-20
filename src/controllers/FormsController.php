@@ -93,11 +93,7 @@ class FormsController extends BaseCpController
         }
 
         return $this->renderTemplate('basin/forms/_new', $variables + [
-            'values' => $values ?? [
-                'name' => '',
-                'notification_emails' => $variables['settings']->getNewFormNotificationEmail(),
-            ],
-            'newFormNotificationEmail' => $variables['settings']->getNewFormNotificationEmail(),
+            'values' => $values ?? ['name' => '', 'notification_emails' => ''],
             'errors' => array_map(fn(string $message) => [$message], $errors ?? []),
         ]);
     }

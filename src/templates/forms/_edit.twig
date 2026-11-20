@@ -58,9 +58,7 @@
         <p class="light">{{ 'Basin asks new addresses to confirm by email before they receive notifications. The Basin account owner’s address doesn’t need confirming.'|t('basin') }}</p>
 
         {% set recipientFields = {
-            notification_emails: { label: 'Send to'|t('basin'), instructions: (settings.getNewFormNotificationEmail()
-                ? 'Who Basin emails when someone submits the form. Separate addresses with commas. Leave blank to send them to the Basin account owner. (The plugin’s “New form notification email” setting only fills in new forms.)'
-                : 'Who Basin emails when someone submits the form. Separate addresses with commas. Leave blank to send them to the Basin account owner.')|t('basin') },
+            notification_emails: { label: 'Send to'|t('basin'), instructions: 'Who Basin emails when someone submits the form. Separate addresses with commas. Leave blank to send them to the Basin account owner.'|t('basin') },
             notification_cc_emails: { label: 'CC'|t('basin'), instructions: null },
             notification_bcc_emails: { label: 'BCC'|t('basin'), instructions: null },
         } %}
