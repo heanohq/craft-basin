@@ -7,13 +7,14 @@ Let Basin do the hard work of forms: blocking spam, sending notifications and st
 ## Features
 
 - **Submissions in the Control Panel.** Inbox, spam and trash for every form, with search, dates and bulk actions. Mark submissions as read or spam, move them to the trash, or send them to the form's webhooks again, without leaving Craft.
+- **Forms without a Basin login.** Create forms in your Basin project, change their notifications, redirect, auto-reply and retention, and delete them, from the Control Panel. Handy when an agency owns the Basin account.
 - **Spam protection, added for you.** Whatever CAPTCHA and honeypot Basin requires for a form, the page gets it, even in hard-coded markup and cached templates. Works with reCAPTCHA v2 and v3, hCaptcha and Turnstile.
 - **A Basin Form field.** Let editors pick a form for an entry. It warns them if a form is no longer in your Basin project.
 - **Form Studio forms.** Add a Form Studio form's embed code once, then output it anywhere with one line of Twig.
 - **CSV export and a dashboard widget.** Export any view of your submissions, and see unread counts and the latest submissions on the dashboard.
 - **Twig and GraphQL.** Look up forms by their Basin ID in templates, or query them for a headless front end.
 - **An error log.** If a form is deleted or moved out of your project, it simply isn't shown on the site, and the Control Panel tells you where it was used.
-- **Permissions.** Choose who can see submissions, manage them, export them and change form settings. Permanently deleting submissions is off unless you turn it on.
+- **Permissions.** Choose who can see submissions, manage them, export them, and create, edit or delete forms. Permanently deleting submissions is off unless you turn it on.
 
 ## Your markup, Basin's endpoint
 
