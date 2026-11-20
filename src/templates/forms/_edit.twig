@@ -13,6 +13,8 @@
 {% block content %}
     {% css %}
         #main-content a[data-icon="external"]::before { margin-inline-end: 0.3em; }
+        .basin-delete-modal .body { width: 460px; max-width: calc(100vw - 80px); }
+        .basin-delete-modal .body p { margin-block: var(--s) var(--m); }
     {% endcss %}
     {% if loadError %}
         <blockquote class="note warning">
@@ -314,7 +316,38 @@
                 spam: form.spamCount|number,
                 trash: form.trashCount|number,
             }) }}</p>
-            <button type="button" class="btn caution" id="basin-delete-open">{{ 'Delete form…'|t('basin') }}</button>
+            <button type="button" class="btn caution" id="basin-delete-open" aria-haspopup="dialog">{{ 'Delete form…'|t('basin') }}</button>
+
+            {# The confirmation dialog. It's its own form, posted separately from the settings. #}
+            <template id="basin-delete-template">
+                <form class="modal fitted basin-delete-modal" method="post" accept-charset="UTF-8" role="dialog" aria-modal="true" aria-labelledby="basin-delete-heading">
+                    {{ csrfInput() }}
+                    {{ actionInput('basin/forms/delete') }}
+                    {{ hiddenInput('formUuid', form.uuid) }}
+                    <div class="body">
+                        <h2 id="basin-delete-heading">{{ 'Delete “{name}”?'|t('basin', { name: form.name }) }}</h2>
+                        <p>{{ 'This deletes the form and all its submissions from Basin: {inbox} in the inbox, {spam} in spam and {trash} in the trash. Its endpoint stops working straight away, and this can’t be undone.'|t('basin', {
+                            inbox: form.inboxCount|number,
+                            spam: form.spamCount|number,
+                            trash: form.trashCount|number,
+                        }) }}</p>
+                        <div class="field">
+                            <div class="heading">
+                                <label for="basin-delete-name">{{ 'Type <code>{name}</code> to confirm.'|t('basin', { name: form.name|e })|raw }}</label>
+                            </div>
+                            <div class="input">
+                                <input type="text" class="text fullwidth" id="basin-delete-name" name="confirmName" autocomplete="off" spellcheck="false" autocapitalize="off">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="footer">
+                        <div class="buttons right">
+                            <button type="button" class="btn" data-cancel>{{ 'Cancel'|t('app') }}</button>
+                            <button type="submit" class="btn submit disabled" disabled data-confirm>{{ 'Delete form'|t('basin') }}</button>
+                        </div>
+                    </div>
+                </form>
+            </template>
         {% endif %}
     {% endif %}
 {% endblock %}
@@ -335,33 +368,43 @@
                 }
             });
 
+            // Delete: a dialog whose button only works once the form's name is typed exactly.
             const open = document.getElementById('basin-delete-open');
-            if (open) {
+            const template = document.getElementById('basin-delete-template');
+            if (open && template) {
+                const name = {{ form.name|json_encode|raw }};
+                let modal, input, confirmButton;
+
+                const update = () => {
+                    const matches = input.value.trim() === name;
+                    confirmButton.disabled = !matches;
+                    confirmButton.classList.toggle('disabled', !matches);
+                };
+
                 open.addEventListener('click', () => {
-                    const name = {{ form.name|json_encode|raw }};
-                    const typed = prompt({{ 'This deletes “{name}” and all its submissions from Basin, and can’t be undone. Type the form’s name to confirm.'|t('basin', { name: form.name })|json_encode|raw }});
-                    if (typed === null) {
-                        return;
+                    if (!modal) {
+                        const container = template.content.firstElementChild.cloneNode(true);
+                        input = container.querySelector('input[name="confirmName"]');
+                        confirmButton = container.querySelector('[data-confirm]');
+                        input.addEventListener('input', update);
+                        container.querySelector('[data-cancel]').addEventListener('click', () => modal.hide());
+                        container.addEventListener('submit', (event) => {
+                            if (confirmButton.disabled) {
+                                event.preventDefault();
+                                return;
+                            }
+                            confirmButton.classList.add('loading');
+                            confirmButton.disabled = true;
+                        });
+                        modal = new Garnish.Modal(container, {
+                            autoShow: false,
+                            onFadeIn: () => input.focus(),
+                            onHide: () => open.focus(),
+                        });
                     }
-                    if (typed.trim() !== name) {
-                        Craft.cp.displayError({{ 'The name didn’t match, so the form wasn’t deleted.'|t('basin')|json_encode|raw }});
-                        return;
-                    }
-                    // Posted on its own, not with the settings form.
-                    const del = document.createElement('form');
-                    del.method = 'post';
-                    del.hidden = true;
-                    const fields = {
-                        [Craft.csrfTokenName]: Craft.csrfTokenValue,
-                        action: 'basin/forms/delete',
-                        formUuid: {{ form.uuid|json_encode|raw }},
-                        confirmName: typed.trim(),
-                    };
-                    for (const [key, value] of Object.entries(fields)) {
-                        del.appendChild(Object.assign(document.createElement('input'), { type: 'hidden', name: key, value }));
-                    }
-                    document.body.appendChild(del);
-                    del.submit();
+                    input.value = '';
+                    update();
+                    modal.show();
                 });
             }
         })();
