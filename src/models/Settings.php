@@ -57,7 +57,7 @@ class Settings extends Model
      * (spec §6.7). Comma-separated addresses, or an env var reference.
      * Blank = Basin's default, the Basin account owner.
      */
-    public string $defaultNotificationEmail = '';
+    public string $newFormNotificationEmail = '';
 
     /** Custom label for the main CP nav item. Blank = "Basin". */
     public string $navLabel = '';
@@ -66,9 +66,9 @@ class Settings extends Model
     protected function defineRules(): array
     {
         return [
-            [['apiKey', 'projectId', 'navLabel', 'defaultNotificationEmail'], 'trim'],
-            [['apiKey', 'projectId', 'navLabel', 'defaultNotificationEmail'], 'string'],
-            ['defaultNotificationEmail', 'validateEmails'],
+            [['apiKey', 'projectId', 'navLabel', 'newFormNotificationEmail'], 'trim'],
+            [['apiKey', 'projectId', 'navLabel', 'newFormNotificationEmail'], 'string'],
+            ['newFormNotificationEmail', 'validateEmails'],
             ['apiKey', 'validateEnvReference'],
             ['projectId', 'validateProjectId'],
             ['navLabel', 'string', 'max' => 60],
@@ -132,9 +132,9 @@ class Settings extends Model
     /**
      * The default notification recipients, comma-separated, or ''.
      */
-    public function getDefaultNotificationEmail(): string
+    public function getNewFormNotificationEmail(): string
     {
-        return implode(', ', FormEditor::splitEmails((string)App::parseEnv($this->defaultNotificationEmail)));
+        return implode(', ', FormEditor::splitEmails((string)App::parseEnv($this->newFormNotificationEmail)));
     }
 
     public function getApiKey(): string

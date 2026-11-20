@@ -123,14 +123,14 @@
     {{ forms.autosuggestField({
         label: 'New form notification email'|t('basin'),
         instructions: 'Filled in as the notification email when someone creates a form in the Control Panel. It doesn’t change forms that already exist. Separate addresses with commas, or use an environment variable. Leave blank to send new forms’ notifications to the Basin account owner. New addresses have to confirm by email before they receive notifications.'|t('basin'),
-        id: 'basin-defaultNotificationEmail',
-        name: 'settings[defaultNotificationEmail]',
-        value: _self.value('defaultNotificationEmail', settings, overrides, plugin),
+        id: 'basin-newFormNotificationEmail',
+        name: 'settings[newFormNotificationEmail]',
+        value: _self.value('newFormNotificationEmail', settings, overrides, plugin),
         suggestEnvVars: true,
         placeholder: 'team@example.com'|t('basin'),
-        errors: settings.getErrors('defaultNotificationEmail'),
-        warning: _self.overrideWarning('defaultNotificationEmail', overrides),
-        disabled: readOnly or 'defaultNotificationEmail' in overrides,
+        errors: settings.getErrors('newFormNotificationEmail'),
+        warning: _self.overrideWarning('newFormNotificationEmail', overrides),
+        disabled: readOnly or 'newFormNotificationEmail' in overrides,
     }) }}
 
     <hr>
