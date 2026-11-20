@@ -3,8 +3,10 @@
 namespace heano\basin\controllers;
 
 use Craft;
+use craft\helpers\App;
 use craft\helpers\ProjectConfig as ProjectConfigHelper;
 use craft\web\Controller;
+use heano\basin\helpers\ProjectOptions;
 use heano\basin\models\Project;
 use heano\basin\models\Settings;
 use heano\basin\Plugin;
@@ -54,7 +56,7 @@ class SettingsController extends Controller
             'overrides' => $plugin->getConfigOverrides(),
             'readOnly' => !Craft::$app->getConfig()->getGeneral()->allowAdminChanges,
             'projects' => $projects,
-            'projectSuggestions' => $this->projectSuggestions($projects),
+            'projectOptions' => $this->projectOptions($projects, $settings, $connectionError === null),
             'linkedProject' => $linkedProject,
             'connectionError' => $connectionError,
         ]);
@@ -138,18 +140,40 @@ class SettingsController extends Controller
     }
 
     /**
-     * Autosuggest data: Basin projects as `id` with the name as hint.
+     * The project dropdown's options, including the env vars that hold one
+     * of the project IDs.
      *
      * @param Project[] $projects
      */
-    private function projectSuggestions(array $projects): array
+    private function projectOptions(array $projects, Settings $settings, bool $loaded): array
     {
-        if (!$projects) {
-            return [];
+        $plugin = Plugin::getInstance();
+        $current = trim((string)(in_array('projectId', $plugin->getConfigOverrides(), true)
+            ? $plugin->getSettings()->projectId
+            : $settings->projectId));
+
+        $byId = [];
+        foreach ($projects as $project) {
+            $byId[$project->id] = $project->name;
         }
-        return [[
-            'label' => Craft::t('basin', 'Basin projects'),
-            'data' => array_map(fn(Project $p) => ['name' => (string)$p->id, 'hint' => $p->name], $projects),
-        ]];
+
+        // Craft's env var list skips numeric values, so these are found here.
+        $env = [];
+        foreach (array_keys($_SERVER) as $name) {
+            if (is_string($name) && !str_starts_with($name, 'HTTP_') && (is_string($value = App::env($name)) || is_int($value))) {
+                $env[$name] = (string)$value;
+            }
+        }
+
+        return ProjectOptions::build($byId, $current, $env, [
+            'choose' => $byId
+                ? Craft::t('basin', 'Choose a project')
+                : Craft::t('basin', 'Test the API key to load your projects'),
+            'unknown' => $loaded && $byId
+                ? Craft::t('basin', 'Not found in your Basin account')
+                : Craft::t('basin', 'Saved project'),
+            'notSet' => Craft::t('basin', 'not set'),
+            'envVars' => Craft::t('app', 'Environment Variables'),
+        ]);
     }
 }

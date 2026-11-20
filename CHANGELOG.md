@@ -3,7 +3,7 @@
 ## Unreleased
 
 ### Added
-- Plugin settings: Basin Account API key (environment variable), linked Basin project, menu label, permanent-deletion toggle, cache duration and missing-form tracking.
+- Plugin settings: Basin Account API key (environment variable), linked Basin project (chosen from your projects, or an environment variable that holds one’s ID), menu label, permanent-deletion toggle, cache duration and missing-form tracking.
 - “Test connection” button on the settings screen.
 - “Basin data” option in Utilities → Clear Caches.
 - Forms screen listing every form in the linked Basin project, with spam protection, endpoint URL, search, and inbox and spam counts that link to the form’s submissions.

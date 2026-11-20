@@ -63,18 +63,22 @@
         </div>
     </div>
 
-    {{ forms.autosuggestField({
+    {{ forms.selectizeField({
         label: 'Basin project'|t('basin'),
-        instructions: 'Every form in this project will be available on this site. Choose a project, or use an environment variable (e.g. `$BASIN_PROJECT_ID`) so staging and production can use different projects.'|t('basin'),
+        instructions: 'Every form in this project will be available on this site. Choose a project, or an environment variable that holds its ID (e.g. `$BASIN_PROJECT_ID`) so staging and production can use different projects.'|t('basin'),
         id: 'basin-projectId',
         name: 'settings[projectId]',
         value: _self.value('projectId', settings, overrides, plugin),
-        suggestions: projectSuggestions,
-        suggestEnvVars: true,
-        placeholder: projects is empty ? 'Save a working API key first'|t('basin') : 'Choose a project'|t('basin'),
+        options: projectOptions,
+        selectizeOptions: {
+            allowEmptyOption: true,
+            placeholder: (projectOptions|first).value is defined and (projectOptions|first).value is same as('') ? (projectOptions|first).label : null,
+        },
         tip: linkedProject ? 'Linked to “{name}”.'|t('basin', { name: linkedProject.name }) : null,
         errors: settings.getErrors('projectId'),
-        warning: _self.overrideWarning('projectId', overrides),
+        warning: _self.overrideWarning('projectId', overrides) ?: (projects is not empty and not linkedProject and settings.getProjectId()
+            ? 'Your Basin account has no project with the ID {id}. Choose another, or check the ID.'|t('basin', { id: settings.getProjectId() })
+            : null),
         disabled: readOnly or 'projectId' in overrides,
     }) }}
 
@@ -189,6 +193,28 @@
     const result = document.getElementById('basin-test-result');
     const input = document.querySelector('#basin-apiKey input, input#basin-apiKey');
 
+    // Lets a first-time setup choose a project before saving the key.
+    const addProjects = (projects) => {
+        const selectize = $('#basin-projectId').data('selectize');
+        if (!selectize || selectize.isDisabled) {
+            return;
+        }
+        for (const project of projects) {
+            const value = String(project.id);
+            if (!selectize.options[value]) {
+                selectize.addOption({ value, text: project.name, hint: value });
+            }
+        }
+        const empty = selectize.options[''];
+        if (empty && projects.length) {
+            const text = Craft.t('basin', 'Choose a project');
+            selectize.updateOption('', { ...empty, text });
+            selectize.settings.placeholder = text;
+            selectize.updatePlaceholder();
+        }
+        selectize.refreshOptions(false);
+    };
+
     const show = (ok, message) => {
         result.className = ok ? 'success' : 'error';
         result.textContent = message;
@@ -204,6 +230,9 @@
                 data: { apiKey: input && !input.disabled ? input.value : '' },
             });
             show(data.success, data.message);
+            if (data.success) {
+                addProjects(data.projects || []);
+            }
         } catch (e) {
             show(false, e?.response?.data?.message || Craft.t('basin', 'Something went wrong.'));
         } finally {
