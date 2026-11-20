@@ -104,7 +104,7 @@ class Plugin extends BasePlugin
         Event::on(UserPermissions::class, UserPermissions::EVENT_REGISTER_PERMISSIONS, function(RegisterUserPermissionsEvent $event) {
             $event->permissions[] = [
                 'heading' => Craft::t('basin', 'Basin'),
-                'permissions' => self::permissions($this->getSettings()->allowDeletion),
+                'permissions' => self::permissions(),
             ];
         });
 
@@ -221,7 +221,7 @@ class Plugin extends BasePlugin
     /**
      * The plugin's permissions (spec §9). `accessPlugin-basin` is registered by Craft.
      */
-    public static function permissions(bool $allowDeletion): array
+    public static function permissions(): array
     {
         $manageForms = [
             self::PERMISSION_MANAGE_FORMS => ['label' => Craft::t('basin', 'Manage form settings (Form Studio embed codes, reCAPTCHA version)')],
@@ -230,9 +230,12 @@ class Plugin extends BasePlugin
             'basin-manageSubmissions' => ['label' => Craft::t('basin', 'Manage submissions (mark as read, spam or trash)')],
             'basin-exportSubmissions' => ['label' => Craft::t('basin', 'Export submissions')],
         ];
-        if ($allowDeletion) {
-            $nested['basin-deleteSubmissions'] = ['label' => Craft::t('basin', 'Permanently delete submissions')];
-        }
+        // Always listed, so it can be granted before deletion is turned on.
+        // Deleting still needs the "Allow permanent deletion" setting.
+        $nested['basin-deleteSubmissions'] = [
+            'label' => Craft::t('basin', 'Permanently delete submissions'),
+            'info' => Craft::t('basin', 'Only works while permanent deletion is allowed in the plugin’s settings.'),
+        ];
 
         return $manageForms + [
             'basin-viewSubmissions' => [
