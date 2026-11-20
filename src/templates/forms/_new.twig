@@ -12,7 +12,7 @@
 {% block content %}
     {{ actionInput('basin/forms/create') }}
 
-    <p>{{ 'Creates a form in the “{project}” project in Basin. You can change its other settings once it’s created.'|t('basin', { project: project.name }) }}</p>
+    <p>{{ 'Creates a form in the “{project}” project in Basin, using this site’s timezone. You can change its other settings once it’s created.'|t('basin', { project: project.name }) }}</p>
 
     {{ forms.textField({
         label: 'Name'|t('basin'),
@@ -28,20 +28,13 @@
 
     {{ forms.textField({
         label: 'Notification email'|t('basin'),
-        instructions: 'Who Basin emails when someone submits the form. Separate addresses with commas. Leave blank to send them to the Basin account owner. Basin asks new addresses to confirm by email before they receive anything.'|t('basin'),
+        instructions: (defaultNotificationEmail
+            ? 'Who Basin emails when someone submits the form. Filled in from the plugin’s default notification email setting. Separate addresses with commas. Basin asks new addresses to confirm by email before they receive anything.'
+            : 'Who Basin emails when someone submits the form. Separate addresses with commas. If you leave it blank, notifications go to the Basin account owner. Basin asks new addresses to confirm by email before they receive anything.')|t('basin'),
         id: 'basin-notification-emails',
         name: 'fields[notification_emails]',
         value: values.notification_emails ?? '',
         placeholder: 'team@example.com'|t('basin'),
         errors: errors.notification_emails ?? null,
-    }) }}
-
-    {{ forms.timeZoneField({
-        label: 'Timezone'|t('basin'),
-        instructions: 'Used for submission dates in Basin’s emails and exports.'|t('basin'),
-        id: 'basin-timezone',
-        name: 'fields[timezone]',
-        value: values.timezone ?? 'UTC',
-        errors: errors.timezone ?? null,
     }) }}
 {% endblock %}

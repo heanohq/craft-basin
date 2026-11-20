@@ -226,13 +226,16 @@ class Plugin extends BasePlugin
     public static function permissions(bool $allowDeletion): array
     {
         $manageForms = [
-            self::PERMISSION_MANAGE_FORMS => ['label' => Craft::t('basin', 'Manage form settings (Form Studio embed codes, reCAPTCHA version)')],
+            self::PERMISSION_MANAGE_FORMS => [
+                'label' => Craft::t('basin', 'Set up forms on this site (Form Studio embed codes, reCAPTCHA version)'),
+                'info' => Craft::t('basin', 'Saved on this site only. Doesn’t change anything in Basin.'),
+            ],
             self::PERMISSION_EDIT_FORMS => [
-                'label' => Craft::t('basin', 'Create and edit forms in Basin'),
+                'label' => Craft::t('basin', 'Create forms and change their settings in Basin'),
                 'info' => Craft::t('basin', 'Changes the linked Basin project directly.'),
                 'nested' => [
                     self::PERMISSION_DELETE_FORMS => [
-                        'label' => Craft::t('basin', 'Delete forms'),
+                        'label' => Craft::t('basin', 'Delete forms from Basin'),
                         'warning' => Craft::t('basin', 'Deleting a form also deletes all its submissions in Basin.'),
                     ],
                 ],

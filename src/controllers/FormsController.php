@@ -3,6 +3,7 @@
 namespace heano\basin\controllers;
 
 use Craft;
+use craft\helpers\App;
 use Heano\Basin\Exception\ApiException;
 use Heano\Basin\Exception\NotFoundException;
 use Heano\Basin\Exception\ValidationException;
@@ -95,8 +96,8 @@ class FormsController extends BaseCpController
             'values' => $values ?? [
                 'name' => '',
                 'notification_emails' => $variables['settings']->getDefaultNotificationEmail(),
-                'timezone' => Craft::$app->getTimeZone(),
             ],
+            'defaultNotificationEmail' => $variables['settings']->getDefaultNotificationEmail(),
             'errors' => array_map(fn(string $message) => [$message], $errors ?? []),
         ]);
     }
@@ -108,9 +109,12 @@ class FormsController extends BaseCpController
 
         $values = FormEditor::normalise(array_intersect_key(
             (array)$this->request->getBodyParam('fields', []),
-            ['name' => 1, 'notification_emails' => 1, 'timezone' => 1],
+            ['name' => 1, 'notification_emails' => 1],
         ));
-        $values += ['name' => '', 'notification_emails' => '', 'timezone' => 'UTC'];
+        // New forms use the site's timezone, as Basin's dashboard uses the
+        // account's. It can be changed in the editor afterwards.
+        $values += ['name' => '', 'notification_emails' => ''];
+        $values['timezone'] = $this->siteTimeZone();
         $fail = fn(array $errors, ?string $message = null) => $this->asFailure(
             $message ?? Craft::t('basin', 'Couldn’t create the form.'),
             routeParams: ['values' => $values, 'errors' => $errors],
@@ -255,6 +259,18 @@ class FormsController extends BaseCpController
             Craft::t('basin', '“{name}” deleted.', ['name' => $form->name]),
             redirect: 'basin/forms',
         );
+    }
+
+    /**
+     * The site's timezone. Craft::$app->getTimeZone() can't be used: on CP
+     * requests it's the signed-in user's own preference.
+     */
+    private function siteTimeZone(): string
+    {
+        $timeZone = (string)App::parseEnv(
+            Craft::$app->getConfig()->getGeneral()->timezone ?? Craft::$app->getProjectConfig()->get('system.timeZone') ?? 'UTC'
+        );
+        return FormEditor::isTimezone($timeZone) ? $timeZone : 'UTC';
     }
 
     /**

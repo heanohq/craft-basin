@@ -11,6 +11,9 @@
 ] %}
 
 {% block content %}
+    {% css %}
+        #main-content a[data-icon="external"]::before { margin-inline-end: 0.3em; }
+    {% endcss %}
     {% if loadError %}
         <blockquote class="note warning">
             <p>{{ 'Couldn’t load this form’s settings from Basin: {message}'|t('basin', { message: loadError }) }}</p>
@@ -301,22 +304,18 @@
         </div>
 
         <p class="light">{{ 'Email design, mail templates and sending domains are also set in Basin.'|t('basin') }}</p>
-    {% endif %}
-{% endblock %}
 
-{% block details %}
-    {% if loadError is null and canDelete %}
-        <div class="meta">
-            <div class="field" style="padding: var(--m) var(--m) 0;">
-                <h2 style="margin: 0 0 var(--s);">{{ 'Delete form'|t('basin') }}</h2>
-                <p>{{ 'Deletes the form and all its submissions ({inbox} in the inbox, {spam} in spam, {trash} in the trash) from Basin. Its endpoint stops working straight away. This can’t be undone.'|t('basin', {
-                    inbox: form.inboxCount|number,
-                    spam: form.spamCount|number,
-                    trash: form.trashCount|number,
-                }) }}</p>
-                <button type="button" class="btn caution" id="basin-delete-open">{{ 'Delete form…'|t('basin') }}</button>
-            </div>
-        </div>
+        {% if canDelete %}
+            <hr>
+
+            <h2>{{ 'Delete form'|t('basin') }}</h2>
+            <p>{{ 'Deletes the form and all its submissions ({inbox} in the inbox, {spam} in spam, {trash} in the trash) from Basin. Its endpoint stops working straight away. This can’t be undone.'|t('basin', {
+                inbox: form.inboxCount|number,
+                spam: form.spamCount|number,
+                trash: form.trashCount|number,
+            }) }}</p>
+            <button type="button" class="btn caution" id="basin-delete-open">{{ 'Delete form…'|t('basin') }}</button>
+        {% endif %}
     {% endif %}
 {% endblock %}
 
