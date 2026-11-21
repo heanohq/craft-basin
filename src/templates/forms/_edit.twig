@@ -18,8 +18,11 @@
         .basin-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
         .basin-chips:empty { display: none; }
         .basin-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border: 1px solid var(--hairline-color); border-radius: 999px; background: var(--gray-050); line-height: 1.4; }
-        .basin-chip.is-waiting { border-color: var(--warning-color); background: transparent; padding-inline-start: 8px; }
+        .basin-chip.is-waiting, .basin-chip.is-verified { background: transparent; padding-inline-start: 8px; }
+        .basin-chip.is-waiting { border-color: var(--warning-color); }
+        .basin-chip.is-verified { border-color: var(--success-color); }
         .basin-chip-icon { display: inline-flex; width: 13px; height: 13px; color: var(--warning-color); }
+        .is-verified .basin-chip-icon { color: var(--success-color); }
         .basin-chip-icon svg, .basin-chip-remove svg { width: 100%; height: 100%; }
         .basin-chip-remove { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 4px; border-radius: 50%; color: var(--light-text-color); cursor: pointer; }
         .basin-chip-remove:hover, .basin-chip-remove:focus-visible { background: var(--gray-200); color: var(--text-color); }
@@ -78,6 +81,7 @@
         {% for key, field in recipientFields %}
             {% set id = 'basin-' ~ key|replace('_', '-') %}
             {% set live = recipients[key].live %}
+            {% set verified = live|map(e => e|lower) %}
             {% set waiting = recipients[key].pending|map(e => e|lower) %}
             {% set emails = values[key]|split(',')|map(e => e|trim)|filter(e => e != '') %}
             {% set anyWaiting = emails|filter(e => e|lower in waiting) is not empty %}
@@ -94,10 +98,11 @@
                     <ul class="basin-chips">
                         {% for email in emails %}
                             {% set isWaiting = email|lower in waiting %}
-                            <li class="basin-chip{{ isWaiting ? ' is-waiting' }}" data-email="{{ email }}"{% if isWaiting %} title="{{ 'Waiting for verification'|t('basin') }}"{% endif %}>
-                                {% if isWaiting %}<span class="basin-chip-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.5V8l2.5 1.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>{% endif %}
+                            {% set isVerified = not isWaiting and email|lower in verified %}
+                            <li class="basin-chip{{ isWaiting ? ' is-waiting' }}{{ isVerified ? ' is-verified' }}" data-email="{{ email }}"{% if isWaiting %} title="{{ 'Waiting for verification'|t('basin') }}"{% elseif isVerified %} title="{{ 'Verified'|t('basin') }}"{% endif %}>
+                                {% if isWaiting %}<span class="basin-chip-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.5V8l2.5 1.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>{% elseif isVerified %}<span class="basin-chip-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.3 8.2l1.9 1.9 3.6-3.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>{% endif %}
                                 <span class="basin-chip-email">{{ email }}</span>
-                                {% if isWaiting %}<span class="visually-hidden">{{ '(waiting for verification)'|t('basin') }}</span>{% endif %}
+                                {% if isWaiting %}<span class="visually-hidden">{{ '(waiting for verification)'|t('basin') }}</span>{% elseif isVerified %}<span class="visually-hidden">{{ '(verified)'|t('basin') }}</span>{% endif %}
                                 <button type="button" class="basin-chip-remove" aria-label="{{ 'Remove {email}'|t('basin', { email: email }) }}"><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
                             </li>
                         {% endfor %}
