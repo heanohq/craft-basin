@@ -7,9 +7,11 @@
 set -euo pipefail
 
 dir=$(dirname "$0")
+model=${TRIAGE_MODEL:-sonnet}
+model=$(tr '[:upper:]' '[:lower:]' <<< "$model")
 
 claude -p "$(cat "$dir/prompt.md")" \
-  --model "${TRIAGE_MODEL:-sonnet}" \
+  --model "$model" \
   --max-turns "${TRIAGE_MAX_TURNS:-25}" \
   --tools 'Read,Glob,Grep,WebFetch' \
   --allowedTools 'Read(./**)' 'WebFetch(domain:heano.io)' 'WebFetch(domain:usebasin.com)' \
