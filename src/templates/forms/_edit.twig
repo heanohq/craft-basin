@@ -15,6 +15,15 @@
         #main-content a[data-icon="external"]::before { margin-inline-end: 0.3em; }
         .basin-delete-modal .body { width: 460px; max-width: calc(100vw - 80px); }
         .basin-delete-modal .body p { margin-block: var(--s) var(--m); }
+        .basin-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; padding: 0; list-style: none; }
+        .basin-chips:empty { display: none; }
+        .basin-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 10px; border: 1px solid var(--hairline-color); border-radius: 999px; background: var(--gray-050); line-height: 1.4; }
+        .basin-chip.is-waiting { border-color: var(--warning-color); background: transparent; padding-inline-start: 8px; }
+        .basin-chip-icon { display: inline-flex; width: 13px; height: 13px; color: var(--warning-color); }
+        .basin-chip-icon svg, .basin-chip-remove svg { width: 100%; height: 100%; }
+        .basin-chip-remove { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 4px; border-radius: 50%; color: var(--light-text-color); cursor: pointer; }
+        .basin-chip-remove:hover, .basin-chip-remove:focus-visible { background: var(--gray-200); color: var(--text-color); }
+        .basin-chips-note { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; font-size: 12px; }
     {% endcss %}
     {% if loadError %}
         <blockquote class="note warning">
@@ -57,33 +66,61 @@
 
         {# Notifications #}
         <h2>{{ 'Notifications'|t('basin') }}</h2>
-        <p class="light">{{ 'Basin asks new addresses to confirm by email before they receive notifications. The Basin account owner’s address doesn’t need confirming.'|t('basin') }}</p>
+        <p class="light">{{ 'Basin emails new addresses asking them to verify, and they get no notifications until they do. The Basin account owner’s address doesn’t need verifying.'|t('basin') }}</p>
 
+        {# Recipients are listed as chips, verified and pending together, as in Basin. The
+           hidden input holds the list that's saved; addresses left out are dropped. #}
         {% set recipientFields = {
-            notification_emails: { label: 'Send to'|t('basin'), instructions: 'Who Basin emails when someone submits the form. Separate addresses with commas. Leave blank to send them to the Basin account owner.'|t('basin') },
+            notification_emails: { label: 'Send to'|t('basin'), instructions: 'Who Basin emails when someone submits the form. If there’s no one here, Basin emails the account owner.'|t('basin') },
             notification_cc_emails: { label: 'CC'|t('basin'), instructions: null },
             notification_bcc_emails: { label: 'BCC'|t('basin'), instructions: null },
         } %}
         {% for key, field in recipientFields %}
-            {% set waiting = pending[key] ?? [] %}
-            {% set warning = null %}
-            {% if waiting %}
-                {% set warning = (key == 'notification_emails' and values[key] == ''
-                    ? 'Waiting for {emails} to confirm. Until someone does, this form doesn’t email anyone.'
-                    : 'Waiting for {emails} to confirm.')|t('basin', { emails: waiting|join(', ') }) %}
-            {% endif %}
-            {{ forms.textField({
+            {% set id = 'basin-' ~ key|replace('_', '-') %}
+            {% set live = recipients[key].live %}
+            {% set waiting = recipients[key].pending|map(e => e|lower) %}
+            {% set emails = values[key]|split(',')|map(e => e|trim)|filter(e => e != '') %}
+            {% set anyWaiting = emails|filter(e => e|lower in waiting) is not empty %}
+            {% set warning = key == 'notification_emails' and live is empty and anyWaiting
+                ? 'None of these addresses are verified yet, so this form doesn’t email anyone.'|t('basin')
+                : null %}
+            {% set input %}
+                <div class="basin-recipients" data-pending="{{ waiting|json_encode }}">
+                    {{ hiddenInput('fields[' ~ key ~ ']', values[key], {
+                        id: id ~ '-value',
+                        data: { live: live|join(', '), pending: waiting|join(', ') },
+                    }) }}
+                    <input type="text" inputmode="email" class="text fullwidth" id="{{ id }}" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="{{ 'Type an address and press Enter'|t('basin') }}">
+                    <ul class="basin-chips">
+                        {% for email in emails %}
+                            {% set isWaiting = email|lower in waiting %}
+                            <li class="basin-chip{{ isWaiting ? ' is-waiting' }}" data-email="{{ email }}"{% if isWaiting %} title="{{ 'Waiting for verification'|t('basin') }}"{% endif %}>
+                                {% if isWaiting %}<span class="basin-chip-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.5V8l2.5 1.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>{% endif %}
+                                <span class="basin-chip-email">{{ email }}</span>
+                                {% if isWaiting %}<span class="visually-hidden">{{ '(waiting for verification)'|t('basin') }}</span>{% endif %}
+                                <button type="button" class="basin-chip-remove" aria-label="{{ 'Remove {email}'|t('basin', { email: email }) }}"><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    {% if anyWaiting %}
+                        <p class="basin-chips-note light"><span class="basin-chip-icon" aria-hidden="true"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.5V8l2.5 1.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></span>{{ 'Waiting for verification. Basin has emailed these addresses, and they won’t get notifications until they verify.'|t('basin') }}</p>
+                    {% endif %}
+                </div>
+            {% endset %}
+            {{ forms.field({
                 label: field.label,
                 instructions: field.instructions,
-                id: 'basin-' ~ key|replace('_', '-'),
-                name: 'fields[' ~ key ~ ']',
-                value: values[key],
-                placeholder: 'team@example.com'|t('basin'),
+                id: id,
                 warning: warning,
                 errors: errors[key] ?? null,
-                inputAttributes: { data: { original: basinSettings[key] ?? '' } },
-            }) }}
+            }, input) }}
         {% endfor %}
+        <template id="basin-chip-template">
+            <li class="basin-chip" data-email="">
+                <span class="basin-chip-email"></span>
+                <button type="button" class="basin-chip-remove" aria-label=""><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+            </li>
+        </template>
 
         {{ forms.textField({
             label: 'Subject'|t('basin'),
@@ -355,27 +392,94 @@
 {% if loadError is null %}
     {% js %}
         (() => {
-            // New Send to addresses get nothing until they confirm (spec §6.7). If Send to was
-            // blank, the account owner was getting the emails, and they stop too.
-            const to = document.getElementById('basin-notification-emails');
-            const split = (v) => v.toLowerCase().split(/[\s,;]+/).filter(Boolean);
+            // Recipients: type an address and press Enter (or a comma) to add it as a chip.
+            const split = (v) => (v || '').split(/[\s,;]+/).filter(Boolean);
+            const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+            const chipTemplate = document.getElementById('basin-chip-template');
+            const removeLabel = {{ 'Remove {email}'|t('basin')|json_encode|raw }};
+            const recipients = [...document.querySelectorAll('.basin-recipients')].map((root) => {
+                const value = root.querySelector('input[type="hidden"]');
+                const input = root.querySelector('input[type="text"]');
+                const list = root.querySelector('.basin-chips');
+                const note = root.querySelector('.basin-chips-note');
+                const chips = () => [...list.children];
+                const sync = () => {
+                    value.value = chips().map((chip) => chip.dataset.email).join(', ');
+                    if (note) {
+                        note.hidden = !list.querySelector('.is-waiting');
+                    }
+                };
+                // Adds what's been typed. Anything that isn't an address stays in the box.
+                const add = () => {
+                    const parts = split(input.value);
+                    const bad = parts.filter((part) => !isEmail(part));
+                    for (const email of parts.filter(isEmail)) {
+                        if (!chips().some((chip) => chip.dataset.email.toLowerCase() === email.toLowerCase())) {
+                            const chip = chipTemplate.content.firstElementChild.cloneNode(true);
+                            chip.dataset.email = email;
+                            chip.querySelector('.basin-chip-email').textContent = email;
+                            chip.querySelector('.basin-chip-remove').setAttribute('aria-label', removeLabel.replace('{email}', email));
+                            list.append(chip);
+                        }
+                    }
+                    input.value = bad.join(', ');
+                    input.classList.toggle('error', bad.length > 0);
+                    sync();
+                    return bad.length === 0;
+                };
+                input.addEventListener('keydown', (event) => {
+                    if (event.key === 'Enter' || event.key === ',' || event.key === ';') {
+                        event.preventDefault();
+                        add();
+                    }
+                });
+                input.addEventListener('blur', add);
+                input.addEventListener('paste', () => setTimeout(add));
+                list.addEventListener('click', (event) => {
+                    const button = event.target.closest('.basin-chip-remove');
+                    if (button) {
+                        button.closest('.basin-chip').remove();
+                        sync();
+                        input.focus();
+                    }
+                });
+                return { value, input, add };
+            });
+
+            // New Send to addresses get nothing until they’re verified (spec §6.7). If Send to was
+            // empty, the account owner was getting the emails, and they stop too.
+            const to = document.getElementById('basin-notification-emails-value');
             $('#main-form').on('submit', (event) => {
+                const stop = () => {
+                    event.preventDefault();
+                    event.stopImmediatePropagation();
+                };
+                const invalid = recipients.find((field) => !field.add());
+                if (invalid) {
+                    stop();
+                    invalid.input.focus();
+                    Craft.cp.displayError({{ 'That isn’t an email address.'|t('basin')|json_encode|raw }});
+                    return;
+                }
                 if (!to) {
                     return;
                 }
-                const original = split(to.dataset.original);
-                const current = split(to.value);
-                const added = current.filter((email) => !original.includes(email));
-                if (added.length) {
-                    const message = !original.length
-                        ? {{ 'Basin will email the new addresses to confirm. Until one does, this form won’t email anyone, not even the Basin account owner. Save anyway?'|t('basin')|json_encode|raw }}
-                        : !current.some((email) => original.includes(email))
-                            ? {{ 'Basin will email the new addresses to confirm. Until one does, this form won’t email anyone. Save anyway?'|t('basin')|json_encode|raw }}
-                            : {{ 'Basin will email any new addresses to confirm. Until they do, they won’t receive notifications. Save anyway?'|t('basin')|json_encode|raw }};
-                    if (!confirm(message)) {
-                        event.preventDefault();
-                        event.stopImmediatePropagation();
-                    }
+                const lower = (v) => split(v).map((email) => email.toLowerCase());
+                const live = lower(to.dataset.live);
+                const waiting = lower(to.dataset.pending);
+                const current = lower(to.value);
+                const added = current.filter((email) => !live.includes(email) && !waiting.includes(email));
+                // With nothing verified and something pending, the form already emails no one.
+                if (!added.length || (!live.length && waiting.length)) {
+                    return;
+                }
+                const message = !live.length
+                    ? {{ 'Basin will email the new addresses to verify them. Until one is verified, this form won’t email anyone, not even the Basin account owner. Save anyway?'|t('basin')|json_encode|raw }}
+                    : !current.some((email) => live.includes(email))
+                        ? {{ 'Basin will email the new addresses to verify them. Until one is verified, this form won’t email anyone. Save anyway?'|t('basin')|json_encode|raw }}
+                        : {{ 'Basin will email any new addresses to verify them. Until they’re verified, they won’t receive notifications. Save anyway?'|t('basin')|json_encode|raw }};
+                if (!confirm(message)) {
+                    stop();
                 }
             });
 

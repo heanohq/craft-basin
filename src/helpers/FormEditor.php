@@ -76,6 +76,26 @@ final class FormEditor
     ];
 
     /**
+     * Basin's settings with each recipients field holding its verified and
+     * pending addresses together, as the CP lists them. Basin treats a saved
+     * list the same way: addresses it already has stay as they are, new ones
+     * wait for verification, and pending ones left out are dropped.
+     *
+     * @param array<string, mixed> $settings
+     * @return array<string, mixed>
+     */
+    public static function withPending(array $settings): array
+    {
+        foreach (self::PENDING_FIELDS as $key => $pendingKey) {
+            if (array_key_exists($key, $settings) || array_key_exists($pendingKey, $settings)) {
+                $all = self::str($settings[$key] ?? '') . ', ' . self::str($settings[$pendingKey] ?? '');
+                $settings[$key] = implode(', ', self::splitEmails($all));
+            }
+        }
+        return $settings;
+    }
+
+    /**
      * Cleans up editable values, from Basin or from the CP: trims text, tidies
      * email lists, and casts booleans and numbers. Unknown keys are dropped.
      *
@@ -164,7 +184,7 @@ final class FormEditor
             }
             if ($key === 'notification_emails' || $key === 'notification_cc_emails' || $key === 'notification_bcc_emails') {
                 // The same addresses in another order or case aren't a change,
-                // and re-sending them could put them back into confirmation.
+                // and re-sending them could put them back into verification.
                 if (self::sameEmails((string)($before[$key] ?? ''), (string)$value)) {
                     continue;
                 }

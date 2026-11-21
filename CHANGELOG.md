@@ -15,7 +15,7 @@
 - Permanently delete submissions from Basin, when deletion is allowed.
 - “Send to webhooks again” on a submission’s page, for forms with webhooks in Basin.
 - Create forms in the linked Basin project from the Forms screen, so editors don’t need a Basin login.
-- Edit a form’s name, timezone, notification emails, redirect and thank-you page, auto-reply and data retention from its page. Only the settings you change are sent to Basin, and recipients waiting to confirm their address are shown. Spam protection and webhooks are still set in Basin.
+- Edit a form’s name, timezone, notification emails, redirect and thank-you page, auto-reply and data retention from its page. Only the settings you change are sent to Basin, and recipients waiting to verify their address are marked. Spam protection and webhooks are still set in Basin.
 - Delete forms from Basin, after typing the form’s name to confirm.
 - “Create and edit forms in Basin” and “Delete forms” permissions.
 - Basin’s notification email addresses and webhook URLs are removed from form data before it’s cached, along with the Turnstile secret.

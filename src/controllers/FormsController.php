@@ -134,8 +134,8 @@ class FormsController extends BaseCpController
         $live = (string)($settings['notification_emails'] ?? '');
         $pending = (string)($settings['notification_emails_pending'] ?? '');
         $notice = match (true) {
-            $pending !== '' && $live === '' => Craft::t('basin', 'Basin has emailed {emails} to confirm they want this form’s notifications. Until someone confirms, notifications aren’t sent to anyone.', ['emails' => $pending]),
-            $pending !== '' => Craft::t('basin', 'Basin has emailed {pending} to confirm they want this form’s notifications. Until then, notifications go to {emails}.', ['pending' => $pending, 'emails' => $live]),
+            $pending !== '' && $live === '' => Craft::t('basin', 'Basin has emailed {emails} asking them to verify. Until one is verified, this form doesn’t email anyone.', ['emails' => $pending]),
+            $pending !== '' => Craft::t('basin', 'Basin has emailed {pending} asking them to verify. Until then, notifications go to {emails}.', ['pending' => $pending, 'emails' => $live]),
             $values['notification_emails'] === '' && $live !== '' => Craft::t('basin', 'Notifications go to {emails}, the Basin account owner. Change this under Notifications.', ['emails' => $live]),
             default => null,
         };
@@ -177,11 +177,15 @@ class FormsController extends BaseCpController
             'form' => $form,
             'loadError' => null,
             'basinSettings' => $settings,
-            'values' => ($values ?? []) + FormEditor::normalise($settings),
+            'values' => ($values ?? []) + FormEditor::normalise(FormEditor::withPending($settings)),
             'errors' => array_map(fn(string $message) => [$message], $errors ?? []),
-            'pending' => array_map(
-                fn(string $key) => FormEditor::splitEmails((string)($settings[$key] ?? '')),
-                FormEditor::PENDING_FIELDS,
+            // Each recipients field's verified and pending addresses, listed apart.
+            'recipients' => array_map(
+                fn(string $key) => [
+                    'live' => FormEditor::splitEmails((string)($settings[$key] ?? '')),
+                    'pending' => FormEditor::splitEmails((string)($settings[FormEditor::PENDING_FIELDS[$key]] ?? '')),
+                ],
+                array_combine(array_keys(FormEditor::PENDING_FIELDS), array_keys(FormEditor::PENDING_FIELDS)),
             ),
             'canDelete' => Craft::$app->getUser()->checkPermission(Plugin::PERMISSION_DELETE_FORMS),
             'createdNotice' => Craft::$app->getSession()->getFlash('basin:created'),
@@ -209,7 +213,8 @@ class FormsController extends BaseCpController
             return $fail([], Craft::t('basin', 'Couldn’t reach Basin: {message}', ['message' => $e->getMessage()]));
         }
 
-        $changes = FormEditor::changes($original, $posted);
+        // The CP lists pending addresses with the verified ones, so compare against both.
+        $changes = FormEditor::changes(FormEditor::withPending($original), $posted);
         $errors = $this->errorMessages(FormEditor::validate($changes));
         if ($errors) {
             return $fail($errors);

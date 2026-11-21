@@ -167,3 +167,22 @@ it('splits email lists on commas, semicolons and new lines, without repeats', fu
     expect(FormEditor::splitEmails(" a@example.com,b@example.com;\nA@example.com  c@example.com "))
         ->toBe(['a@example.com', 'b@example.com', 'c@example.com']);
 });
+
+describe('withPending', function() {
+    it('lists pending addresses with the verified ones', function() {
+        $settings = basinSettings(['notification_emails' => 'owner@example.com', 'notification_emails_pending' => 'new@example.com, OWNER@example.com']);
+        expect(FormEditor::withPending($settings)['notification_emails'])->toBe('owner@example.com, new@example.com');
+    });
+
+    it('finds nothing to send when the pending addresses are posted back unchanged', function() {
+        $settings = basinSettings(['notification_emails' => '', 'notification_emails_pending' => 'new@example.com']);
+        $posted = ['notification_emails' => 'new@example.com'] + postedUnchanged();
+        expect(FormEditor::changes(FormEditor::withPending($settings), $posted))->toBe([]);
+    });
+
+    it('sends the list without a pending address that was removed', function() {
+        $settings = basinSettings(['notification_emails_pending' => 'new@example.com']);
+        $posted = ['notification_emails' => 'owner@example.com'] + postedUnchanged();
+        expect(FormEditor::changes(FormEditor::withPending($settings), $posted))->toBe(['notification_emails' => 'owner@example.com']);
+    });
+});
