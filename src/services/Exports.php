@@ -125,6 +125,7 @@ class Exports extends Component
     public function run(string $token, array $criteria, bool $technical, ?callable $progress = null): void
     {
         $meta = $this->getMeta($token) ?? throw new \RuntimeException('The export was cancelled or has expired.');
+        $out = null;
         try {
             $form = Plugin::getInstance()->getForms()->getFormByUuid($meta['formUuid'])
                 ?? throw new \RuntimeException('The form is no longer in the linked Basin project.');
@@ -140,7 +141,10 @@ class Exports extends Component
             $this->updateMeta($token, ['status' => 'ready', 'progress' => 1] + $built);
         } catch (Throwable $e) {
             Craft::warning("Basin export $token failed: " . $e->getMessage(), 'basin');
-            @unlink($this->path($token, 'csv'));
+            if (is_resource($out)) {
+                fclose($out);
+            }
+            $this->removeFile($this->path($token, 'csv'));
             $this->updateMeta($token, ['status' => 'failed', 'error' => $e->getMessage()]);
         }
     }
@@ -179,8 +183,8 @@ class Exports extends Component
 
     public function delete(string $token): void
     {
-        @unlink($this->path($token, 'csv'));
-        @unlink($this->path($token, 'json'));
+        $this->removeFile($this->path($token, 'csv'));
+        $this->removeFile($this->path($token, 'json'));
     }
 
     /**
@@ -197,8 +201,19 @@ class Exports extends Component
         // CSVs whose metadata has gone.
         foreach (glob($this->dir() . '/*.csv') ?: [] as $file) {
             if (!is_file(substr($file, 0, -4) . '.json')) {
-                @unlink($file);
+                $this->removeFile($file);
             }
+        }
+    }
+
+    /**
+     * Deletes a file if it's there. A failed export may never have written
+     * its CSV, and garbage collection may get to a file first.
+     */
+    private function removeFile(string $file): void
+    {
+        if (is_file($file)) {
+            @unlink($file);
         }
     }
 
