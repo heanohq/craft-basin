@@ -57,11 +57,12 @@ if jq -en --arg c "$created" --argjson d "$MIN_ACCOUNT_AGE_DAYS" '(now - ($c | f
   skip "account less than $MIN_ACCOUNT_AGE_DAYS days old"
 fi
 
-# Runs of this workflow since a time, other than this one, whose triage job
-# ran (wasn't skipped by this gate). Prints "id<TAB>title" per run.
+# Runs of this workflow since a time, other than this one and test runs
+# started by hand, whose triage job ran (wasn't skipped by this gate).
+# Prints "id<TAB>title" per run.
 runs_since() {
   gh api --paginate "repos/$GH_REPO/actions/workflows/$WORKFLOW/runs?created=%3E%3D$1&per_page=100" \
-    --jq ".workflow_runs[] | select(.id != $GITHUB_RUN_ID) | [.id, .display_title] | @tsv" |
+    --jq ".workflow_runs[] | select(.id != $GITHUB_RUN_ID and .event != \"workflow_dispatch\") | [.id, .display_title] | @tsv" |
     while IFS=$'\t' read -r id title; do
       conclusion=$(gh api "repos/$GH_REPO/actions/runs/$id/jobs" \
         --jq ".jobs[] | select(.name == \"$TRIAGE_JOB\") | (.conclusion // .status)")
