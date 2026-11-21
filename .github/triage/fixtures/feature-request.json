@@ -1,0 +1,13 @@
+{
+  "number": 0,
+  "title": "Formie integration",
+  "state": "open",
+  "labels": [
+    "feature request"
+  ],
+  "author": "example-user",
+  "author_association": "NONE",
+  "created_at": "2026-11-21T10:00:00Z",
+  "body": "Would be great if this could sync Basin forms with Formie, so editors can build forms in Formie and have the submissions go to Basin.",
+  "comments": []
+}

@@ -1,0 +1,140 @@
+name: Triage
+run-name: "${{ github.event_name == 'workflow_dispatch' && format('Triage test: {0}', inputs.fixture) || format('Triage #{0}', github.event.issue.number) }}"
+
+# Shadow mode: Claude reads each issue and proposes what to do, and the
+# proposal goes to an issue in craft-basin-internal. Nothing is posted here.
+# See CLAUDE.md ("Automated jobs: issues") and .github/triage/.
+
+on:
+  issues:
+    types: [opened]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      fixture:
+        description: Sample issue from .github/triage/fixtures to triage
+        type: choice
+        options: [question-csp, bug-no-details, follow-up, feature-request, basin-problem, injection]
+
+permissions: {}
+
+concurrency:
+  group: triage-${{ github.event.issue.number || inputs.fixture }}
+  cancel-in-progress: false
+
+jobs:
+  gate:
+    name: Gate
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
+      reason: ${{ steps.gate.outputs.reason }}
+      note: ${{ steps.gate.outputs.note }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/triage
+          persist-credentials: false
+
+      - name: Decide whether to run
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            echo 'run=true' >> "$GITHUB_OUTPUT"
+          else
+            .github/triage/gate.sh
+          fi
+
+  triage:
+    name: Triage
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: read
+    outputs:
+      proposal: ${{ steps.result.outputs.proposal }}
+      problems: ${{ steps.result.outputs.problems }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Collect the thread
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ISSUE: ${{ github.event.issue.number }}
+          FIXTURE: ${{ inputs.fixture }}
+        run: .github/triage/collect.sh
+
+      - name: Install Claude Code
+        run: npm install --global --no-fund --no-audit @anthropic-ai/claude-code@2.1.117
+
+      # No GitHub token here: Claude can only read the checkout and the docs.
+      - name: Run Claude
+        env:
+          CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          TRIAGE_MODEL: ${{ vars.TRIAGE_MODEL || 'sonnet' }}
+        run: .github/triage/run.sh
+
+      - name: Check the proposal
+        id: result
+        if: always()
+        env:
+          SECRETS: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+        run: |
+          problems=$(.github/triage/check.sh) || true
+          {
+            echo "proposal=$(base64 -w0 .triage/proposal.json 2> /dev/null || true)"
+            echo 'problems<<EOF'
+            echo "$problems"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+          if [ -n "$problems" ]; then
+            echo "::warning::Proposal rejected: $(head -1 <<< "$problems")"
+          fi
+
+  post:
+    name: Post to craft-basin-internal
+    needs: [gate, triage]
+    if: always() && needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/triage
+          persist-credentials: false
+
+      - uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ vars.SUPPORT_APP_ID }}
+          private-key: ${{ secrets.SUPPORT_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: craft-basin-internal
+
+      - name: Post what triage would have done
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          INTERNAL_REPO: ${{ github.repository_owner }}/craft-basin-internal
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          TRIAGE_RESULT: ${{ needs.triage.result }}
+          PROPOSAL: ${{ needs.triage.outputs.proposal }}
+          PROBLEMS: ${{ needs.triage.outputs.problems }}
+          NOTE: ${{ needs.gate.outputs.note }}
+          ISSUE: ${{ github.event.issue.number }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          FIXTURE: ${{ inputs.fixture }}
+        run: .github/triage/post-shadow.sh

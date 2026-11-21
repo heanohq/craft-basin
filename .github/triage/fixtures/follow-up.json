@@ -1,0 +1,26 @@
+{
+  "number": 0,
+  "title": "Error after updating",
+  "state": "open",
+  "labels": [
+    "bug report"
+  ],
+  "author": "example-user",
+  "author_association": "NONE",
+  "created_at": "2026-11-21T10:00:00Z",
+  "body": "### Plugin version\n1.0.0\n\n### Craft version\n5.8.2\n\n### PHP version\n8.2\n\n### What happened?\nThe submissions page shows an error.",
+  "comments": [
+    {
+      "author": "heano-support[bot]",
+      "author_association": "NONE",
+      "created_at": "2026-11-21T10:05:00Z",
+      "body": "Thanks for the report. Could you share the error message, and the lines from `storage/logs/web.log` around the time it happened?"
+    },
+    {
+      "author": "example-user",
+      "author_association": "NONE",
+      "created_at": "2026-11-21T11:00:00Z",
+      "body": "Here it is:\n\n```\n[error][basin] Couldn’t reach Basin: cURL error 28: Operation timed out after 10001 milliseconds\n```\n\nIt happens every time on forms with a lot of submissions, small forms are fine."
+    }
+  ]
+}

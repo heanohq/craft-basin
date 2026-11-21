@@ -1,0 +1,13 @@
+{
+  "number": 0,
+  "title": "CAPTCHA not showing on my contact form",
+  "state": "open",
+  "labels": [
+    "question"
+  ],
+  "author": "example-user",
+  "author_association": "NONE",
+  "created_at": "2026-11-21T10:00:00Z",
+  "body": "### Plugin version\n1.0.0\n\n### Craft version\n5.8.2\n\n### PHP version\n8.3\n\n### What happened?\nThe form has hCaptcha turned on in Basin but no CAPTCHA appears on the page. The form submits and Basin rejects it as spam. Our site sends a Content-Security-Policy header from nginx. Is there something I need to add?",
+  "comments": []
+}

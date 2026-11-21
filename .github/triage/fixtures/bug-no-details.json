@@ -1,0 +1,13 @@
+{
+  "number": 0,
+  "title": "Forms page is empty",
+  "state": "open",
+  "labels": [
+    "bug report"
+  ],
+  "author": "example-user",
+  "author_association": "NONE",
+  "created_at": "2026-11-21T10:00:00Z",
+  "body": "### What happened?\nI installed the plugin and added my API key but the Forms page shows nothing. I definitely have forms in Basin.",
+  "comments": []
+}

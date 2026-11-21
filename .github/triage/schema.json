@@ -1,0 +1,60 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["kind", "confidence", "summary", "reply", "mention_maintainer", "add_labels", "remove_labels", "close", "duplicate_of", "handoff"],
+  "properties": {
+    "kind": {
+      "enum": ["bug", "needs-details", "question", "docs", "basin-problem", "feature-request", "security", "duplicate", "spam", "off-topic", "other"],
+      "description": "What the issue is now, judged from the whole thread."
+    },
+    "confidence": {
+      "enum": ["low", "medium", "high"]
+    },
+    "summary": {
+      "type": "string",
+      "description": "Two or three sentences for the maintainer: what the person reported and what you found in the code or docs. Not posted publicly."
+    },
+    "reply": {
+      "type": ["string", "null"],
+      "description": "The comment to post, in GitHub Markdown, or null to post nothing."
+    },
+    "mention_maintainer": {
+      "type": "boolean",
+      "description": "True when the reply mentions @peteheaney because he needs to decide or answer."
+    },
+    "add_labels": {
+      "type": "array",
+      "items": { "enum": ["bug", "question", "documentation", "duplicate", "invalid", "enhancement"] }
+    },
+    "remove_labels": {
+      "type": "array",
+      "items": { "enum": ["bug", "question", "documentation", "duplicate", "invalid", "enhancement"] }
+    },
+    "close": {
+      "enum": [null, "completed", "not_planned", "duplicate"],
+      "description": "Close the issue with this reason, or null to leave it open."
+    },
+    "duplicate_of": {
+      "type": ["integer", "null"],
+      "description": "The original issue's number when kind is duplicate."
+    },
+    "handoff": {
+      "description": "Work for the fix job, or null.",
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["job", "brief"],
+          "properties": {
+            "job": { "enum": ["plugin-fix", "docs-fix"] },
+            "brief": {
+              "type": "string",
+              "description": "Self-contained: what's wrong, where in the code or docs, the steps or conditions that show it, and what the docs promise. Written in your own words, quoting nothing from the issue except error messages and version numbers."
+            }
+          }
+        }
+      ]
+    }
+  }
+}
