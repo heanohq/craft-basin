@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  # Daily, so a new Craft or dependency release that breaks the plugin is
+  # caught even when nothing here changed (highest dependencies are resolved
+  # fresh on every run).
+  schedule:
+    - cron: '17 5 * * *'
 
 permissions:
   contents: read
@@ -41,5 +46,51 @@ jobs:
       - name: Check syntax
         run: find src tests -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
 
+      - name: Show Craft version
+        run: composer show craftcms/cms | grep -E '^versions'
+
       - name: Run tests
         run: vendor/bin/pest
+
+  audit:
+    name: Security audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: composer:v2
+
+      - uses: ramsey/composer-install@v3
+        with:
+          dependency-versions: highest
+
+      - name: Check dependencies for known vulnerabilities
+        run: composer audit --no-dev
+
+  report:
+    name: Report a failed daily run
+    needs: [tests, audit]
+    if: failure() && github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Open or update an issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title='Daily tests failed'
+          number=$(gh issue list --state open --label 'daily-tests' --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body "Failed again: $RUN_URL"
+          else
+            gh issue create --title "$title" --label 'daily-tests' --body "The daily run against the newest Craft and dependencies failed: $RUN_URL
+
+          Close this issue once the run passes again."
+          fi
