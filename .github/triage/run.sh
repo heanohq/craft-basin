@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs Claude on .triage/thread.json and writes its proposal to
 # .triage/proposal.json. Claude can only read this repository and fetch pages
-# from heano.io and usebasin.com; it can't write, run commands or post.
+# from heano.io and Basin's sites; it can't write, run commands or post.
 #
 # Prints only a summary of the run: logs on a public repository are public.
 set -euo pipefail
@@ -13,6 +13,7 @@ claude -p "$(cat "$dir/prompt.md")" \
   --max-turns "${TRIAGE_MAX_TURNS:-25}" \
   --tools 'Read,Glob,Grep,WebFetch' \
   --allowedTools 'Read(./**)' 'WebFetch(domain:heano.io)' 'WebFetch(domain:usebasin.com)' \
+    'WebFetch(domain:docs.usebasin.com)' 'WebFetch(domain:status.usebasin.com)' \
   --permission-mode dontAsk \
   --setting-sources project \
   --strict-mcp-config \

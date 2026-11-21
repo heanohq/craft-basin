@@ -7,6 +7,10 @@ set -uo pipefail
 p=.triage/proposal.json
 problems=()
 
+if jq -e '.api_error_status == 401' .triage/result.json > /dev/null 2>&1; then
+  echo "Claude's login was refused: CLAUDE_CODE_OAUTH_TOKEN has expired or been revoked. See .github/triage/README.md."
+  exit 1
+fi
 if ! jq -e 'type == "object"' "$p" > /dev/null 2>&1; then
   echo 'No proposal: the run failed or ran out of turns.'
   exit 1
