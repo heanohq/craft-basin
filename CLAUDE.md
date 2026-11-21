@@ -51,6 +51,7 @@ A change to anything the docs describe (settings, permissions, labels, Twig, Gra
 - **No AI attribution** anywhere in this repo: no `Co-authored-by` lines or mentions of AI in commits, code comments, the changelog or the README.
 - Changes are listed under `## Unreleased` in `CHANGELOG.md`, in Craft's format (`### Added`, `### Changed`, `### Fixed`, …), written for site developers.
 - Releases are git tags with the plain version (`1.2.3`, no `v`), annotated. Never add a `version` key to `composer.json`.
+- To release: rename `## Unreleased` in `CHANGELOG.md` to `## 1.2.3 - YYYY-MM-DD`, commit it as "Release 1.2.3", tag it (`git tag -a 1.2.3 -m "Release 1.2.3"`), and push the commit and the tag. Pushing the tag runs `.github/workflows/release.yml`, which creates the GitHub release with that version's changelog section as its notes; it fails if the changelog has no section for the tag. To fix a release's notes, correct the changelog, then run the workflow by hand with the tag. Packagist and Craft's Plugin Store pick up the tag themselves.
 - **Automated jobs** may tag patch releases of merged bug fixes. Minor and major releases always need Pete. Outside the automated jobs, never tag without Pete's go-ahead.
 
 ## Automated jobs: issues
