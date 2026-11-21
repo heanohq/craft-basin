@@ -1,6 +1,6 @@
 # Release Notes for Basin
 
-## Unreleased
+## 1.0.0 - 2026-11-21
 
 ### Added
 - Plugin settings: Basin Account API key (environment variable), linked Basin project (chosen from your projects, or an environment variable that holds one’s ID), menu label, permanent-deletion toggle, cache duration and missing-form tracking.
