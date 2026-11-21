@@ -223,6 +223,16 @@ final class FormEditor
             return null;
         }
 
+        // "Verification email rate limit exceeded…" is about the recipients that were sent.
+        if (stripos($message, 'verification email') !== false) {
+            foreach ($values as $key => $value) {
+                if ((self::FIELDS[$key] ?? null) === self::EMAILS) {
+                    return $key;
+                }
+            }
+            return null;
+        }
+
         // Longest names first, so "Redirect url" doesn't claim "Redirect button text…".
         $keys = array_keys(self::FIELDS);
         usort($keys, fn(string $a, string $b) => strlen($b) <=> strlen($a));

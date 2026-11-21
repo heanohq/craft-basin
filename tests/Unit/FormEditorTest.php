@@ -162,6 +162,12 @@ describe('fieldForMessage', function() {
         expect(FormEditor::fieldForMessage('Invalid email address: bad@example', $sent))->toBe('notification_cc_emails')
             ->and(FormEditor::fieldForMessage('Invalid email address: other@example.com', $sent))->toBeNull();
     });
+
+    it('puts the verification rate limit on the recipients field that was sent', function() {
+        $message = 'Verification email rate limit exceeded. Please try again later or add fewer emails.';
+        expect(FormEditor::fieldForMessage($message, ['name' => 'Contact', 'notification_cc_emails' => 'a@example.com']))->toBe('notification_cc_emails')
+            ->and(FormEditor::fieldForMessage($message, ['name' => 'Contact']))->toBeNull();
+    });
 });
 
 it('splits email lists on commas, semicolons and new lines, without repeats', function() {
