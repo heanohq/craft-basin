@@ -355,12 +355,23 @@
 {% if loadError is null %}
     {% js %}
         (() => {
-            // Changing a working recipients list stops notifications until the new addresses confirm (spec §6.7).
+            // New Send to addresses get nothing until they confirm (spec §6.7). If Send to was
+            // blank, the account owner was getting the emails, and they stop too.
             const to = document.getElementById('basin-notification-emails');
-            const norm = (v) => v.toLowerCase().split(/[\s,;]+/).filter(Boolean).sort().join(',');
+            const split = (v) => v.toLowerCase().split(/[\s,;]+/).filter(Boolean);
             $('#main-form').on('submit', (event) => {
-                if (to && to.dataset.original.trim() !== '' && norm(to.value) !== norm(to.dataset.original)) {
-                    const message = {{ 'Basin will email any new addresses to confirm. Until they do, they won’t receive notifications. Save anyway?'|t('basin')|json_encode|raw }};
+                if (!to) {
+                    return;
+                }
+                const original = split(to.dataset.original);
+                const current = split(to.value);
+                const added = current.filter((email) => !original.includes(email));
+                if (added.length) {
+                    const message = !original.length
+                        ? {{ 'Basin will email the new addresses to confirm. Until one does, this form won’t email anyone, not even the Basin account owner. Save anyway?'|t('basin')|json_encode|raw }}
+                        : !current.some((email) => original.includes(email))
+                            ? {{ 'Basin will email the new addresses to confirm. Until one does, this form won’t email anyone. Save anyway?'|t('basin')|json_encode|raw }}
+                            : {{ 'Basin will email any new addresses to confirm. Until they do, they won’t receive notifications. Save anyway?'|t('basin')|json_encode|raw }};
                     if (!confirm(message)) {
                         event.preventDefault();
                         event.stopImmediatePropagation();
