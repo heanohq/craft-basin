@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Decides whether an issue event gets a triage run, and enforces the caps.
 #
-# Needs GH_TOKEN (actions: read), GH_REPO, GITHUB_EVENT_NAME, GITHUB_EVENT_PATH,
+# Needs GH_TOKEN (actions: read, issues: read), GH_REPO, GITHUB_EVENT_NAME, GITHUB_EVENT_PATH,
 # GITHUB_RUN_ID and GITHUB_OUTPUT. Writes `run` (true or false), `reason`, and
 # `note` (issue-cap or daily-cap) on the run that uses up a cap, so it's
 # reported once.
@@ -40,6 +40,16 @@ case $association in
 esac
 if jq -e '.issue.labels[].name | select(. == "daily-tests" or . == "openapi-watch")' "$event" > /dev/null; then
   skip 'opened by an automated job'
+fi
+
+# Once a maintainer has replied, the conversation is theirs, unless they
+# hand it back with the `triage` label.
+if ! jq -e '.issue.labels[].name | select(. == "triage")' "$event" > /dev/null; then
+  maintainer=$(gh api --paginate "repos/$GH_REPO/issues/$number/comments?per_page=100" \
+    --jq '.[] | select(.user.type != "Bot" and (.author_association == "OWNER" or .author_association == "MEMBER" or .author_association == "COLLABORATOR")) | .user.login' | head -1)
+  if [ -n "$maintainer" ]; then
+    skip 'a maintainer has replied'
+  fi
 fi
 
 created=$(gh api "users/$login" --jq '.created_at')

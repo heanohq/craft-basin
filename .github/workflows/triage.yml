@@ -30,6 +30,7 @@ jobs:
     permissions:
       actions: read
       contents: read
+      issues: read
     outputs:
       run: ${{ steps.gate.outputs.run }}
       reason: ${{ steps.gate.outputs.reason }}
