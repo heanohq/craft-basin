@@ -63,7 +63,9 @@ class SpamProtection extends Component
     }
 
     /**
-     * A hidden honeypot input with the form's field name.
+     * A hidden honeypot input with the form's field name. Hidden with the
+     * `hidden` attribute rather than an inline style, which a strict Content
+     * Security Policy would block, leaving the field visible.
      */
     public function honeypotHtml(BasinForm $form, array $attributes = []): string
     {
@@ -74,7 +76,7 @@ class SpamProtection extends Component
             'tabindex' => '-1',
             'autocomplete' => 'off',
             'aria-hidden' => 'true',
-            'style' => 'display:none !important',
+            'hidden' => true,
             'data-basin-honeypot' => true,
         ], $attributes));
     }

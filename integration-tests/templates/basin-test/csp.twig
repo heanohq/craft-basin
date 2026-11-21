@@ -1,0 +1,16 @@
+{% extends 'basin-test/_layout' %}
+{# A page with the Content-Security-Policy from ?csp=, recording every
+   violation, for checking the docs' CSP advice against the real providers. #}
+{% block head %}
+<meta http-equiv="Content-Security-Policy" content="{{ craft.app.request.getQueryParam('csp') }}">
+<script nonce="docs-test-nonce">
+  window.violations = [];
+  document.addEventListener('securitypolicyviolation', (e) => window.violations.push([e.effectiveDirective, e.blockedURI, e.sourceFile, e.lineNumber, (e.sample || '').slice(0, 60)].join(' | ')));
+</script>
+{% endblock %}
+{% block body %}
+<form id="contact" action="https://usebasin.com/f/{{ uuid }}" method="post">
+  <input type="email" name="email" value="person@example.com">
+  <button type="submit">Send</button>
+</form>
+{% endblock %}

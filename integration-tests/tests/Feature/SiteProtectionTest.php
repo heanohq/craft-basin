@@ -28,7 +28,8 @@ it('protects a form on a page: {0}', function(array $fields, ?string $captcha, s
     $html = page('form', $form['uuid']);
 
     expect($html)->toContain("name=\"$honeypot\"")
-        ->and(substr_count($html, 'data-basin-honeypot'))->toBe(1);
+        // The honeypot input, not protect.js, which also names the attribute.
+        ->and(preg_match_all('/<input[^>]*data-basin-honeypot/', $html))->toBe(1);
 
     $config = protectConfig($html);
     if ($captcha === null) {

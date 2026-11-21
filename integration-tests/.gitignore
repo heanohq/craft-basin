@@ -9,3 +9,4 @@ composer.lock
 /package.json
 /package-lock.json
 /tests/Browser/Screenshots/
+/.docs/

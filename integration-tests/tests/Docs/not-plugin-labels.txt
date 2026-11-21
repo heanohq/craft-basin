@@ -1,0 +1,57 @@
+# Bold text in the docs that isn't a label in the plugin or in Craft, so
+# UiLabelsTest doesn't check it. One per line, as it appears without
+# formatting and without a trailing ":" or ".". Lines starting with # are
+# comments.
+#
+# Only add text here that really isn't the plugin's UI. If the docs name a
+# plugin label that doesn't exist, fix the docs (or the plugin) instead.
+
+# Basin's own UI, which the plugin links to
+Account
+API
+Allowed Domains
+Basin account owner
+CAPTCHA
+Capture Source URL
+Email design
+Enable AJAX
+Form Studio
+Publish
+Redirect Parent Page
+Redirects
+Thank-you message or redirect
+
+# Other products
+Basin for Craft
+Blitz
+Memcached
+Redis
+reCAPTCHA v2
+reCAPTCHA v3
+
+# Lead-ins and emphasis
+Always wrap the form in {% if form %}
+Basin rejects every submission
+Create and edit forms
+Expired cache entries are deleted by your cache
+Expired exports are deleted by Craft's garbage collection
+Forms in templates
+Spam protection, added for you
+Submissions in the Control Panel
+Submissions marked “failed_recaptcha”
+The form requires a CAPTCHA, and the page doesn't have one
+The form was moved by mistake
+The form was replaced
+Turnstile without keys
+Until an address is verified, it doesn't receive notifications
+Warnings when something's wrong
+You've dealt with it
+all its submissions
+database cache
+doesn't save any personal data in Craft's database
+every domain
+file cache
+no longer appear in this site's Control Panel
+one Basin project
+records it
+returns null

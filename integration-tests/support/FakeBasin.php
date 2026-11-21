@@ -71,7 +71,8 @@ class FakeBasin implements ClientInterface
     /**
      * Adds a form to Basin, starting from Basin's defaults (no CAPTCHA, no
      * honeypot, no redirect, no webhooks) in the linked project 1002.
-     * `$fields` uses Basin's field names, and can come from the presets.
+     * `$fields` uses Basin's field names, and can come from the presets. A
+     * `uuid` in `$fields` sets the form's Basin ID, e.g. the docs' demo IDs.
      *
      * @return array<string, mixed> The form as Basin stores it
      */
@@ -98,7 +99,7 @@ class FakeBasin implements ClientInterface
             $defaults,
             ['name' => $name],
             $fields,
-            ['id' => $id, 'uuid' => sprintf('f%011d', $id)],
+            ['id' => $id, 'uuid' => $fields['uuid'] ?? sprintf('f%011d', $id)],
         );
         return $this->forms[$id] = $form;
     }

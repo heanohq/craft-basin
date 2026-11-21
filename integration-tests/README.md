@@ -48,6 +48,17 @@ The first run installs Craft (Pro) and the plugin. Each test runs in a transacti
 
   Don't commit the `composer.json` change. Chromium's system libraries go when DDEV restarts.
 
+- **Docs** (`tests/Docs`): the user docs against the plugin, so neither can drift from the other. It checks the config keys, settings, permissions, Twig API, GraphQL types and example queries, renders every Twig example, and checks that bold text naming the Control Panel matches a real label in the plugin or Craft. Bold text that isn't (Basin's own UI, other products, emphasis) is listed in `tests/Docs/not-plugin-labels.txt`. The docs are in heano's site repo, so copy them in first (`.docs` is ignored by git), or point `DOCS_DIR` at them:
+
+  ```bash
+  rsync -a --delete ~/Documents/www/heano/src/content/docs/craft-plugins/basin/docs/ .docs/
+  ddev exec -d /var/www/craft-basin/integration-tests vendor/bin/pest --testsuite=Docs
+  ```
+
+- **Providers** (`tests/Providers`): the real reCAPTCHA, hCaptcha and Turnstile, using their public test keys (reCAPTCHA v3 has none, so it uses Basin's), on a page whose Content Security Policy allows only what the docs' CSP table lists, with and without a nonce. Any CSP violation fails, so a provider changing what its script loads shows up as a docs fix to make. Needs the network, the docs, and the same setup as Browser.
+
+CI checks the published docs (heano's `master`) on every push, on pull requests and daily, and heano checks docs changes against this repo's `main` before they're published.
+
 ## Fixes to craft-pest
 
 `support/TestableResponse.php` replaces craft-pest's test response, which otherwise checks assertions against the wrong page after a second request, renders a second Control Panel page empty, and never fires the events Yii fires when sending a response (the plugin adds spam protection in one).

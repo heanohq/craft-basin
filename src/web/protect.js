@@ -186,9 +186,16 @@
         type: 'text', name: settings.honeypotField, tabIndex: -1, autocomplete: 'off',
       });
       honeypot.setAttribute('aria-hidden', 'true');
-      honeypot.style.setProperty('display', 'none', 'important');
+      honeypot.setAttribute('data-basin-honeypot', '');
+      honeypot.hidden = true;
       form.prepend(honeypot);
     }
+    // Setting the style from a script isn't affected by a Content Security
+    // Policy, and keeps the honeypot hidden even if the site's CSS overrides
+    // the hidden attribute.
+    form.querySelectorAll('[data-basin-honeypot]').forEach((field) => {
+      field.style.setProperty('display', 'none', 'important');
+    });
 
     if (form.querySelector(EXISTING_CAPTCHA)) return;
 

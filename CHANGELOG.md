@@ -7,6 +7,7 @@
 - The plugin now requires `guzzlehttp/psr7` 2.0 or later, which it already needed: with 1.x, every request to Basin failed.
 
 ### Fixed
+- The honeypot field is now hidden on sites whose Content Security Policy blocks inline styles. It was visible there, so people could fill it in and have their submission filed as spam.
 - Fixed a Twig deprecation warning on a submission's page, which would become an error in Twig 4.
 
 ## 1.0.0 - 2026-11-21

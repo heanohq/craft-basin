@@ -171,6 +171,89 @@ jobs:
       - name: Run browser tests
         run: vendor/bin/pest --testsuite=Browser
 
+  docs:
+    name: Docs and CAPTCHA providers
+    # The docs are in heano's private site repo, which a fork's pull request
+    # can't read. They're checked again once it's merged.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    # Playwright doesn't support Ubuntu 26.04 (ubuntu-latest) yet.
+    runs-on: ubuntu-24.04
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: basin_tests
+          MYSQL_USER: db
+          MYSQL_PASSWORD: db
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      CRAFT_DB_SERVER: 127.0.0.1
+      CRAFT_DB_PORT: 3306
+      CRAFT_DB_USER: db
+      CRAFT_DB_PASSWORD: db
+    defaults:
+      run:
+        working-directory: integration-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ vars.SUPPORT_APP_ID }}
+          private-key: ${{ secrets.SUPPORT_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: heano
+          permission-contents: read
+
+      # The published docs. heano's own workflow checks docs changes before
+      # they're published.
+      - name: Check out the docs
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/heano
+          ref: master
+          token: ${{ steps.app.outputs.token }}
+          path: heano
+          sparse-checkout: src/content/docs/craft-plugins/basin/docs
+          persist-credentials: false
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+          tools: composer:v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies with Pest's browser plugin
+        run: composer require --dev --no-interaction --with-all-dependencies "pestphp/pest:^4.0" "pestphp/pest-plugin-browser:^4.0"
+
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.59.1
+          npx playwright install --with-deps chromium
+
+      - name: Check the docs against the plugin
+        run: vendor/bin/pest --testsuite=Docs
+        env:
+          DOCS_DIR: ${{ github.workspace }}/heano/src/content/docs/craft-plugins/basin/docs
+
+      # Daily too, so a provider changing what its script loads is caught.
+      - name: Check the real CAPTCHA providers under the docs' CSP
+        if: success() || failure()
+        run: vendor/bin/pest --testsuite=Providers
+        env:
+          DOCS_DIR: ${{ github.workspace }}/heano/src/content/docs/craft-plugins/basin/docs
+
   audit:
     name: Security audit
     runs-on: ubuntu-latest
@@ -192,7 +275,7 @@ jobs:
 
   report:
     name: Report a failed daily run
-    needs: [tests, integration, browser, audit]
+    needs: [tests, integration, browser, docs, audit]
     if: failure() && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     permissions:
@@ -209,7 +292,7 @@ jobs:
           if [ -n "$number" ]; then
             gh issue comment "$number" --body "Failed again: $RUN_URL"
           else
-            gh issue create --title "$title" --label 'daily-tests' --body "The daily run against the newest Craft and dependencies failed: $RUN_URL
+            gh issue create --title "$title" --label 'daily-tests' --body "The daily run against the newest Craft and dependencies, the published docs and the real CAPTCHA providers failed: $RUN_URL
 
           Close this issue once the run passes again."
           fi

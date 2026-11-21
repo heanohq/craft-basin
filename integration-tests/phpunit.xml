@@ -9,11 +9,20 @@
         <testsuite name="Integration">
             <directory suffix="Test.php">tests/Feature</directory>
         </testsuite>
-        <!-- Run on its own, outside a transaction. See tests/Uninstall. -->
         <!-- Needs Pest 4's browser plugin and Playwright. See README. -->
         <testsuite name="Browser">
             <directory suffix="Test.php">tests/Browser</directory>
         </testsuite>
+        <!-- The docs against the plugin. Needs the docs in .docs. See README. -->
+        <testsuite name="Docs">
+            <directory suffix="Test.php">tests/Docs</directory>
+        </testsuite>
+        <!-- The real CAPTCHA providers under the docs' CSP. Needs the network,
+             the docs, and the same as Browser. -->
+        <testsuite name="Providers">
+            <directory suffix="Test.php">tests/Providers</directory>
+        </testsuite>
+        <!-- Run on its own, outside a transaction. See tests/Uninstall. -->
         <testsuite name="Uninstall">
             <directory suffix="Test.php">tests/Uninstall</directory>
         </testsuite>
