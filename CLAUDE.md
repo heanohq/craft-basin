@@ -39,7 +39,7 @@ composer install
 vendor/bin/pest
 ```
 
-Unit tests cover the code that doesn't need Craft running. CI runs them on PHP 8.2 to 8.4, with the lowest and highest dependencies, on every push, on pull requests, and daily against the newest Craft. A daily failure opens an issue labelled `daily-tests`.
+Unit tests cover the code that doesn't need Craft running. CI runs them on PHP 8.2 to 8.5 with the highest dependencies, and on PHP 8.2 with the lowest (Craft 5.0, allowed despite its security advisories), on every push, on pull requests, and daily against the newest Craft. A daily failure opens an issue labelled `daily-tests`.
 
 ## Git and releases
 
