@@ -63,6 +63,13 @@ it('uses a custom honeypot name', function() use ($honeypot) {
     expect(PageScanner::insertHoneypots($html, PageScanner::forms($html), $honeypot('website')))->toBe($html);
 });
 
+it('finds the nonce for a stylesheet, preferring the page’s style nonce', function() {
+    expect(PageScanner::styleNonce('<link rel="stylesheet" nonce="styles1"><script nonce="scripts1">x</script>'))->toBe('styles1')
+        ->and(PageScanner::styleNonce('<style nonce="styles2">p{}</style>'))->toBe('styles2')
+        ->and(PageScanner::styleNonce('<script nonce="scripts1">x</script>'))->toBe('scripts1')
+        ->and(PageScanner::styleNonce('<p>none</p>'))->toBeNull();
+});
+
 it('finds the page nonce', function() {
     expect(PageScanner::nonce('<script nonce="abc+/=123">x</script>'))->toBe('abc+/=123')
         ->and(PageScanner::nonce('<script>x</script>'))->toBeNull();

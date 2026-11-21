@@ -89,15 +89,17 @@ it('renders the CAPTCHA under the policy the docs give', function(string $provid
     'no nonce' => false,
 ]);
 
-it('hides the honeypot under a strict policy', function(bool $withNonce) {
+it('moves the honeypot off screen under a strict policy, without JavaScript', function(string $styleSrc) {
+    // A honeypot-only form, so the page gets no script: just the stylesheet.
     $form = $this->basin->addForm('Honeypot form', FakeBasin::honeypot());
+    $policy = str_replace("style-src 'self'", "style-src $styleSrc", strictPolicy([], true));
 
-    $page = visit("/basin-test/csp?uuid={$form['uuid']}&csp=" . rawurlencode(strictPolicy([], $withNonce)));
+    $page = visit("/basin-test/csp?uuid={$form['uuid']}&csp=" . rawurlencode($policy));
 
-    $display = $page->script('() => getComputedStyle(document.querySelector(\'#contact [data-basin-honeypot]\')).display');
-    expect($display)->toBe('none')
+    expect($page->script('() => document.querySelectorAll("script[data-basin-protect-script]").length'))->toBe(0)
+        ->and($page->script('() => document.querySelector(\'#contact [data-basin-extra]\').getBoundingClientRect().right'))->toBeLessThanOrEqual(0)
         ->and($page->script('() => window.violations'))->toBe([]);
 })->with([
-    'nonce' => true,
-    'no nonce' => false,
+    'styles from the site' => "'self'",
+    'styles with a nonce only' => "'nonce-" . CSP_NONCE . "'",
 ]);

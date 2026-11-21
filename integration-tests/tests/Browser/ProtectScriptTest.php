@@ -85,8 +85,9 @@ it('protects a form added after the page loads', function() {
     $page = visit("/basin-test/browser?uuid={$form['uuid']}&late=1");
     $page->wait(0.5);
 
-    $page->assertPresent('#late input[name="_gotcha"]')
+    $page->assertPresent('#late [data-basin-extra] input[name="_gotcha"]')
         ->assertPresent('#late [data-basin-captcha]');
+    expect($page->script('() => document.querySelector(\'#late [data-basin-extra]\').getBoundingClientRect().right'))->toBeLessThanOrEqual(0);
     fakeProvider($page, 'turnstile', 'basinOnLoad_turnstile');
 
     expect(array_column($page->script('() => window.rendered'), 'inForm'))->toBe(['contact', 'late']);

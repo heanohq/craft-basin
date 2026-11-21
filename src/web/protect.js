@@ -182,19 +182,21 @@
     handled.add(form);
 
     if (!form.querySelector(`[name="${settings.honeypotField}"]`)) {
-      const honeypot = Object.assign(document.createElement('input'), {
+      const wrapper = document.createElement('div');
+      wrapper.setAttribute('data-basin-extra', '');
+      wrapper.setAttribute('aria-hidden', 'true');
+      wrapper.append(Object.assign(document.createElement('input'), {
         type: 'text', name: settings.honeypotField, tabIndex: -1, autocomplete: 'off',
-      });
-      honeypot.setAttribute('aria-hidden', 'true');
-      honeypot.setAttribute('data-basin-honeypot', '');
-      honeypot.hidden = true;
-      form.prepend(honeypot);
+      }));
+      form.prepend(wrapper);
     }
-    // Setting the style from a script isn't affected by a Content Security
-    // Policy, and keeps the honeypot hidden even if the site's CSS overrides
-    // the hidden attribute.
-    form.querySelectorAll('[data-basin-honeypot]').forEach((field) => {
-      field.style.setProperty('display', 'none', 'important');
+    // The same as honeypot.css, for a page without it (a form added after the
+    // page loaded). Styles set from a script aren't blocked by a Content
+    // Security Policy.
+    form.querySelectorAll('[data-basin-extra]').forEach((wrapper) => {
+      Object.entries({
+        position: 'absolute', left: '-9999px', top: 'auto', width: '1px', height: '1px', overflow: 'hidden',
+      }).forEach(([property, value]) => wrapper.style.setProperty(property, value, 'important'));
     });
 
     if (form.querySelector(EXISTING_CAPTCHA)) return;

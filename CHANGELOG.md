@@ -5,6 +5,7 @@
 ### Changed
 - Guzzle is now listed as a requirement of the plugin, which uses it directly. Craft already installs it, so nothing changes for existing sites.
 - The plugin now requires `guzzlehttp/psr7` 2.0 or later, which it already needed: with 1.x, every request to Basin failed.
+- The honeypot is now moved off screen by a small stylesheet the plugin links, instead of being hidden with an inline `display:none`. Nothing in its markup says it's hidden, so bots that skip hidden fields fill it in. The stylesheet is served from Craft's resources on the site, so `style-src 'self'` allows it, and it gets the page's nonce if there is one.
 
 ### Fixed
 - The honeypot field is now hidden on sites whose Content Security Policy blocks inline styles. It was visible there, so people could fill it in and have their submission filed as spam.

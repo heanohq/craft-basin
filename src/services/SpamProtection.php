@@ -63,22 +63,47 @@ class SpamProtection extends Component
     }
 
     /**
-     * A hidden honeypot input with the form's field name. Hidden with the
-     * `hidden` attribute rather than an inline style, which a strict Content
-     * Security Policy would block, leaving the field visible.
+     * A honeypot input with the form's field name, in a wrapper that
+     * honeypot.css moves off screen. Nothing in the markup says it's hidden
+     * (no `hidden`, `display:none` or inline style), since bots that read the
+     * HTML skip fields that do. `$attributes` go on the input.
      */
     public function honeypotHtml(BasinForm $form, array $attributes = []): string
     {
-        return Html::tag('input', '', array_merge([
+        $input = Html::tag('input', '', array_merge([
             'type' => 'text',
             'name' => $this->config($form)['honeypotField'],
             'value' => '',
             'tabindex' => '-1',
             'autocomplete' => 'off',
-            'aria-hidden' => 'true',
-            'hidden' => true,
-            'data-basin-honeypot' => true,
         ], $attributes));
+        return Html::tag('div', $input, [
+            'data-basin-extra' => true,
+            'aria-hidden' => 'true',
+        ]);
+    }
+
+    /**
+     * Links honeypot.css on a page that has a honeypot. It's served from
+     * Craft's resources on the site's own domain, so `style-src 'self'`
+     * allows it, and it gets the page's nonce, if it has one, for policies
+     * that only allow styles with a nonce.
+     */
+    public function addHoneypotStyles(string $html): string
+    {
+        if (!str_contains($html, '<div data-basin-extra') || str_contains($html, 'data-basin-styles')) {
+            return $html;
+        }
+        $url = Craft::$app->getAssetManager()->getPublishedUrl(dirname(__DIR__) . '/web/honeypot.css', true);
+        $link = Html::tag('link', '', array_filter([
+            'rel' => 'stylesheet',
+            'href' => $url,
+            'nonce' => PageScanner::styleNonce($html),
+            'data-basin-styles' => true,
+        ]));
+        $head = stripos($html, '</head>');
+        $at = $head !== false ? $head : strpos($html, '<div data-basin-extra');
+        return $at === false ? $html : substr_replace($html, $link, $at, 0);
     }
 
     /**
@@ -108,6 +133,11 @@ class SpamProtection extends Component
      * handled. Forms not in the linked project are recorded as missing.
      */
     public function processHtml(string $html): string
+    {
+        return $this->addHoneypotStyles($this->protectForms($html));
+    }
+
+    private function protectForms(string $html): string
     {
         if (!PageScanner::mightHaveForms($html)) {
             return $html;

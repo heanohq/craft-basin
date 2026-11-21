@@ -28,7 +28,7 @@ it('renders every Twig example', function() {
             expect(str_contains($html, 'demostudio01'))->toBeTrue("$where outputs the Form Studio embed");
         }
         if (str_contains($code, 'form.honeypot()')) {
-            expect(str_contains($html, 'data-basin-honeypot'))->toBeTrue("$where outputs the honeypot");
+            expect(str_contains($html, '<div data-basin-extra'))->toBeTrue("$where outputs the honeypot");
         }
         if (str_contains($code, 'form.captcha()')) {
             expect(str_contains($html, 'data-basin-captcha'))->toBeTrue("$where outputs the CAPTCHA placeholder");

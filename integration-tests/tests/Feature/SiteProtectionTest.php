@@ -28,8 +28,8 @@ it('protects a form on a page: {0}', function(array $fields, ?string $captcha, s
     $html = page('form', $form['uuid']);
 
     expect($html)->toContain("name=\"$honeypot\"")
-        // The honeypot input, not protect.js, which also names the attribute.
-        ->and(preg_match_all('/<input[^>]*data-basin-honeypot/', $html))->toBe(1);
+        ->and(preg_match_all('/<div data-basin-extra aria-hidden="true"><input[^>]*name="' . preg_quote($honeypot, '/') . '"/', $html))->toBe(1)
+        ->and(substr_count($html, 'data-basin-styles'))->toBe(1);
 
     $config = protectConfig($html);
     if ($captcha === null) {
@@ -66,7 +66,7 @@ it('leaves a form alone that opts out', function() {
 
     $html = page('opted-out', $form['uuid']);
 
-    expect($html)->not->toContain('data-basin-honeypot')
+    expect($html)->not->toContain('<div data-basin-extra')
         ->and($html)->not->toContain('data-basin-protect-script');
 });
 
@@ -84,7 +84,7 @@ it('only handles the Twig helpers’ placeholders when automatic protection is o
     $plain = page('form', $form['uuid']);
     $helpers = page('helpers', $form['uuid']);
 
-    expect($plain)->not->toContain('data-basin-honeypot')
+    expect($plain)->not->toContain('<div data-basin-extra')
         ->and($plain)->not->toContain('data-basin-protect-script')
         ->and(substr_count($helpers, 'name="_trap"'))->toBe(1)
         ->and($helpers)->toContain("data-basin-captcha=\"{$form['uuid']}\"")
@@ -101,7 +101,7 @@ it('uses the page’s CSP nonce for its script', function() {
 it('logs a form on a page that isn’t in the project, and leaves the page alone', function() {
     $html = page('form', 'f99999999999');
 
-    expect($html)->not->toContain('data-basin-honeypot')
+    expect($html)->not->toContain('<div data-basin-extra')
         ->and(Plugin::getInstance()->getFormIssues()->count())->toBe(1);
 });
 
@@ -111,7 +111,7 @@ it('leaves the page alone when Basin is down', function() {
     $html = page('form', 'f00000000001');
 
     expect($html)->toContain('<form action="https://usebasin.com/f/f00000000001"')
-        ->and($html)->not->toContain('data-basin-honeypot')
+        ->and($html)->not->toContain('<div data-basin-extra')
         ->and(Plugin::getInstance()->getFormIssues()->count())->toBe(0);
 });
 
@@ -128,4 +128,33 @@ it('does nothing until Basin is set up', function() {
 
     expect(page('form', 'f00000000001'))->not->toContain('data-basin')
         ->and($this->basin->requests)->toBe([]);
+});
+
+it('gives bots that read the HTML nothing to say the honeypot is hidden', function() {
+    $form = $this->basin->addForm('Honeypot form', FakeBasin::honeypot('website'));
+
+    $html = page('form', $form['uuid']);
+    preg_match('/<div data-basin-extra.*?<\/div>/', $html, $m);
+    // Screen readers skip the wrapper; that's the one clue left.
+    $markup = str_replace(' aria-hidden="true"', '', $m[0]);
+
+    expect($markup)->toContain('type="text"')
+        ->and(preg_match('/\bhidden\b|display|style=|honeypot/i', $markup))->toBe(0, $markup)
+        ->and($html)->toMatch('/<link href="[^"]*honeypot\.css[^"]*" rel="stylesheet" data-basin-styles>\s*<\/head>/');
+});
+
+it('links the honeypot stylesheet for the Twig helper too, with the page’s nonce', function() {
+    $form = $this->basin->addForm('Manual form', FakeBasin::honeypot());
+
+    expect(page('nonce', $form['uuid']))->toMatch('/<link [^>]*nonce="test-nonce-123" data-basin-styles>/');
+
+    settings(['autoProtect' => false]);
+    expect(page('helpers', $form['uuid']))->toContain('<div data-basin-extra')
+        ->toMatch('/<link [^>]*data-basin-styles/');
+});
+
+it('leaves pages without a honeypot alone', function() {
+    $form = $this->basin->addForm('Opted out', FakeBasin::honeypot());
+
+    expect(page('opted-out', $form['uuid']))->not->toContain('data-basin-styles');
 });

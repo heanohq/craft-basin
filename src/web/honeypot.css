@@ -1,0 +1,14 @@
+/*
+ * Moves the honeypot's wrapper off screen. From a stylesheet rather than an
+ * inline style, which a Content Security Policy can block, and not with
+ * display:none or the hidden attribute, which bots that read the HTML know
+ * to skip.
+ */
+[data-basin-extra] {
+  position: absolute !important;
+  left: -9999px !important;
+  top: auto !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+}

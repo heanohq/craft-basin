@@ -83,6 +83,12 @@ final class PageScanner
         return preg_match('/<script\b[^>]*\snonce\s*=\s*["\']([A-Za-z0-9+\/=_\-]+)["\']/i', $html, $m) ? $m[1] : null;
     }
 
+    /** The nonce for a stylesheet: a style's or stylesheet's if the page has one, otherwise the scripts'. */
+    public static function styleNonce(string $html): ?string
+    {
+        return preg_match('/<(?:style|link)\b[^>]*\snonce\s*=\s*["\']([A-Za-z0-9+\/=_\-]+)["\']/i', $html, $m) ? $m[1] : self::nonce($html);
+    }
+
     /** Inserts markup before the last `</body>`, or at the end if there isn't one. */
     public static function insertBeforeBodyEnd(string $html, string $markup): string
     {
