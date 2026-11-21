@@ -32,6 +32,8 @@ final class FormEditor
 
     public const MAX_DAYS = 3650;
     private const MAX_LENGTH = 1000;
+    /** Basin rejects longer form names (checked 2026-11-21). */
+    public const MAX_NAME_LENGTH = 100;
     private const MAX_BODY_LENGTH = 10000;
 
     /**
@@ -146,7 +148,11 @@ final class FormEditor
             }
 
             $value = (string)$value;
-            $max = $type === self::TEXTAREA ? self::MAX_BODY_LENGTH : self::MAX_LENGTH;
+            $max = match (true) {
+                $key === 'name' => self::MAX_NAME_LENGTH,
+                $type === self::TEXTAREA => self::MAX_BODY_LENGTH,
+                default => self::MAX_LENGTH,
+            };
             $error = match (true) {
                 $key === 'name' && $value === '' => self::ERROR_REQUIRED,
                 mb_strlen($value) > $max => self::ERROR_TOO_LONG,

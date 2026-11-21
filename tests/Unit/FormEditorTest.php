@@ -134,7 +134,8 @@ describe('validate', function() {
         'no days' => ['retention_days', '', FormEditor::ERROR_DAYS],
         'not a number' => ['retention_days', 'ten', FormEditor::ERROR_DAYS],
         'unknown timezone' => ['timezone', 'Not/AZone', FormEditor::ERROR_TIMEZONE],
-        'long name' => ['name', str_repeat('x', 1001), FormEditor::ERROR_TOO_LONG],
+        'long name' => ['name', str_repeat('x', 101), FormEditor::ERROR_TOO_LONG],
+        'long subject' => ['notification_subject', str_repeat('x', 1001), FormEditor::ERROR_TOO_LONG],
     ]);
 
     it('allows optional fields to be blank', function() {
