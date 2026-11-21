@@ -47,11 +47,13 @@ class InstallsBasin implements HandlesArguments
                 // the plugin is installed.
                 Craft::$app->getProjectConfig()->saveModifiedConfigData();
 
-                // Load the plugin again, as the next request would, so it
-                // starts with its settings from config/basin.php.
-                $loaded = new \ReflectionProperty($plugins, '_pluginsLoaded');
-                $loaded->setValue($plugins, false);
-                $plugins->loadPlugins();
+                // Give it its settings from config/basin.php, as the next
+                // request would. (Not by loading plugins again, which would
+                // run the plugin's init() twice and double its event handlers.)
+                $plugins->getPlugin('basin')->getSettings()->setAttributes(
+                    Craft::$app->getConfig()->getConfigFromFile('basin'),
+                    false,
+                );
                 // Twig's `craft` variable was built before the plugin existed.
                 Craft::$app->set('view', \craft\helpers\App::viewConfig());
             }
