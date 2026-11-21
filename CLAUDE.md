@@ -52,6 +52,8 @@ A change to anything the docs describe (settings, permissions, labels, Twig, Gra
 - Changes are listed under `## Unreleased` in `CHANGELOG.md`, in Craft's format (`### Added`, `### Changed`, `### Fixed`, …), written for site developers.
 - Releases are git tags with the plain version (`1.2.3`, no `v`), annotated. Never add a `version` key to `composer.json`.
 - To release: rename `## Unreleased` in `CHANGELOG.md` to `## 1.2.3 - YYYY-MM-DD`, commit it as "Release 1.2.3", tag it (`git tag -a 1.2.3 -m "Release 1.2.3"`), and push the commit and the tag. Pushing the tag runs `.github/workflows/release.yml`, which creates the GitHub release with that version's changelog section as its notes; it fails if the changelog has no section for the tag. To fix a release's notes, correct the changelog, then run the workflow by hand with the tag. Packagist and Craft's Plugin Store pick up the tag themselves.
+- A release that fixes a security vulnerability or another dangerous bug is critical: end its heading with ` [CRITICAL]` (`## 1.2.3 - YYYY-MM-DD [CRITICAL]`), and Craft shows a warning on every Control Panel page until sites update. Only Pete decides that a release is critical; automated jobs never add it. For a vulnerability, Pete also publishes the GitHub security advisory once the fix is released.
+- Craft ignores a `##` heading it can't read, and everything under it, so a malformed heading loses that release's notes in the Plugin Store without any error. `tests/Unit/ChangelogTest.php` checks every heading.
 - **Automated jobs** may tag patch releases of merged bug fixes. Minor and major releases always need Pete. Outside the automated jobs, never tag without Pete's go-ahead.
 
 ## Automated jobs: issues
