@@ -24,9 +24,10 @@ jobs:
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
     steps:
+      # The pushed tag's changelog, or, when run by hand, the changelog on the
+      # branch it's run on, so a corrected changelog fixes an old release.
       - uses: actions/checkout@v4
         with:
-          ref: refs/tags/${{ inputs.tag || github.ref_name }}
           persist-credentials: false
 
       - name: Get the release notes from the changelog
