@@ -1,6 +1,6 @@
 # Release Notes for Basin
 
-## Unreleased
+## 1.0.1 - 2026-11-21
 
 ### Changed
 - Guzzle is now listed as a requirement of the plugin, which uses it directly. Craft already installs it, so nothing changes for existing sites.
