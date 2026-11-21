@@ -1,0 +1,7 @@
+/vendor/
+/storage/
+/web/
+/config/project/
+/.phpunit.cache/
+composer.lock
+/config/license.key

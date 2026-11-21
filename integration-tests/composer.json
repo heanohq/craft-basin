@@ -1,0 +1,47 @@
+{
+  "name": "heano/craft-basin-tests",
+  "description": "A Craft project for the plugin's integration tests. Installs the plugin from this repo.",
+  "type": "project",
+  "license": "proprietary",
+  "require": {
+    "heano/craft-basin": "*"
+  },
+  "require-dev": {
+    "markhuot/craft-pest-core": "^3.2.2",
+    "pestphp/pest": "^3.0"
+  },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "..",
+      "options": {
+        "symlink": true,
+        "versions": {
+          "heano/craft-basin": "dev-main"
+        }
+      }
+    }
+  ],
+  "autoload-dev": {
+    "psr-4": {
+      "heano\\basin\\tests\\craft\\": "support/"
+    }
+  },
+  "config": {
+    "sort-packages": true,
+    "allow-plugins": {
+      "yiisoft/yii2-composer": true,
+      "craftcms/plugin-installer": true,
+      "pestphp/pest-plugin": true
+    }
+  },
+  "minimum-stability": "dev",
+  "prefer-stable": true,
+  "extra": {
+    "pest": {
+      "plugins": [
+        "heano\\basin\\tests\\craft\\InstallsBasin"
+      ]
+    }
+  }
+}

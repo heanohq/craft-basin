@@ -39,7 +39,9 @@ composer install
 vendor/bin/pest
 ```
 
-Unit tests cover the code that doesn't need Craft running. CI runs them on PHP 8.2 to 8.5 with the highest dependencies, and on PHP 8.2 with the lowest (Craft 5.0, allowed despite its security advisories), on every push, on pull requests, and daily against the newest Craft. A daily failure opens an issue labelled `daily-tests`.
+Unit tests (`tests/Unit`) cover the code that doesn't need Craft running. Integration tests (`integration-tests/`, see its README) run the plugin inside a real Craft install against a fake Basin, `FakeBasin`, which can hold forms in any configuration. A bug fix's failing test usually belongs there.
+
+CI runs the unit tests on PHP 8.2 to 8.5 with the highest dependencies, and on PHP 8.2 with the lowest (Craft 5.0, allowed despite its security advisories), and the integration tests on PHP 8.2 (lowest) and 8.5 (highest), on every push, on pull requests, and daily against the newest Craft. A daily failure opens an issue labelled `daily-tests`.
 
 ## Git and releases
 

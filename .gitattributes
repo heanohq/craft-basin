@@ -5,3 +5,4 @@
 /.gitignore     export-ignore
 /phpunit.xml    export-ignore
 /CLAUDE.md      export-ignore
+/integration-tests export-ignore

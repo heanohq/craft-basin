@@ -51,12 +51,69 @@ jobs:
           dependency-versions: ${{ matrix.dependencies }}
 
       - name: Check syntax
-        run: find src tests -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
+        run: find src tests integration-tests/support integration-tests/tests -name '*.php' -print0 | xargs -0 -n1 php -l > /dev/null
 
       - name: Show Craft version
         run: composer show craftcms/cms | grep -E '^versions'
 
       - name: Run tests
+        run: vendor/bin/pest
+
+  integration:
+    name: Craft integration (PHP ${{ matrix.php }}, ${{ matrix.dependencies }} dependencies)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - php: '8.2'
+            dependencies: lowest
+          - php: '8.5'
+            dependencies: highest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: basin_tests
+          MYSQL_USER: db
+          MYSQL_PASSWORD: db
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      CRAFT_DB_SERVER: 127.0.0.1
+      CRAFT_DB_PORT: 3306
+      CRAFT_DB_USER: db
+      CRAFT_DB_PASSWORD: db
+    defaults:
+      run:
+        working-directory: integration-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer:v2
+
+      - name: Allow the oldest supported versions
+        if: matrix.dependencies == 'lowest'
+        run: composer config policy.advisories.block false
+
+      - uses: ramsey/composer-install@v3
+        with:
+          working-directory: integration-tests
+          dependency-versions: ${{ matrix.dependencies }}
+
+      - name: Show Craft version
+        run: composer show craftcms/cms | grep -E '^versions'
+
+      - name: Run integration tests
         run: vendor/bin/pest
 
   audit:
@@ -80,7 +137,7 @@ jobs:
 
   report:
     name: Report a failed daily run
-    needs: [tests, audit]
+    needs: [tests, integration, audit]
     if: failure() && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     permissions:

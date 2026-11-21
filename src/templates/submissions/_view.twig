@@ -10,7 +10,7 @@
 ] %}
 {% set tz = form.phpTimezone %}
 
-{% macro actionButton(label, action, submission, form, redirect, extra) %}
+{% macro actionButton(label, action, submission, form, redirect, extra = {}) %}
     <form method="post" accept-charset="UTF-8" style="display: inline;" {{ extra.confirm is defined ? "data-confirm=\"#{extra.confirm|e('html_attr')}\""|raw }}>
         {{ csrfInput() }}
         {{ actionInput('basin/submissions/apply') }}
