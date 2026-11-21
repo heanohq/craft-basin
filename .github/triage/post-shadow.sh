@@ -32,6 +32,11 @@ defuse() { sed -E 's/(^|[^A-Za-z0-9`])@([A-Za-z0-9][A-Za-z0-9-]*)/\1`@\2`/g'; }
 quote() { sed 's/^/> /'; }
 
 {
+  # A live reply that mentions Pete would notify him, so this does too.
+  if [ -n "${PROPOSAL:-}" ] && base64 -d <<< "$PROPOSAL" | jq -e '.mention_maintainer' > /dev/null; then
+    echo '@peteheaney, live this reply would mention you.'
+    echo
+  fi
   echo "**[Run]($RUN_URL)**: $TRIAGE_RESULT"
   echo
   if [ -n "${PROPOSAL:-}" ]; then
