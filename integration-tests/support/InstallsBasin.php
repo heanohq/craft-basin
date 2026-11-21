@@ -23,6 +23,13 @@ class InstallsBasin implements HandlesArguments
                 throw new \RuntimeException("Refusing to run integration tests against the database \"$database\". Use one whose name ends in _tests.");
             }
 
+            // A database installed by an older Craft or plugin version (e.g.
+            // after a lowest-dependencies run) gets updated, as a site would.
+            $updates = Craft::$app->getUpdates();
+            if ($handles = $updates->getPendingMigrationHandles(true)) {
+                $updates->runMigrations($handles);
+            }
+
             // Pro, for more than one user (craft-pest's actingAsAdmin() adds
             // one, and permission tests need non-admins).
             $projectConfig = Craft::$app->getProjectConfig();

@@ -4,6 +4,7 @@
 
 ### Changed
 - Guzzle is now listed as a requirement of the plugin, which uses it directly. Craft already installs it, so nothing changes for existing sites.
+- The plugin now requires `guzzlehttp/psr7` 2.0 or later, which it already needed: with 1.x, every request to Basin failed.
 
 ### Fixed
 - Fixed a Twig deprecation warning on a submission's page, which would become an error in Twig 4.
