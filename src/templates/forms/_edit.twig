@@ -343,7 +343,7 @@
             <div class="heading"><label>{{ 'Webhooks'|t('basin') }}</label></div>
             <div class="input">
                 <p>{{ form.webhookCount ? '{num, plural, =1{1 webhook} other{# webhooks}}'|t('basin', { num: form.webhookCount }) : 'None'|t('basin') }}</p>
-                <p><a href="{{ form.getBasinSettingsUrl('integrations/zapier') }}" target="_blank" rel="noopener" data-icon="external">{{ 'Change in Basin'|t('basin') }}</a></p>
+                <p><a href="{{ form.getBasinSettingsUrl('form_webhooks') }}" target="_blank" rel="noopener" data-icon="external">{{ 'Change in Basin'|t('basin') }}</a></p>
             </div>
         </div>
 
