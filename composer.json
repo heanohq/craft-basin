@@ -47,6 +47,7 @@
     "developer": "Heano",
     "developerUrl": "https://heano.io",
     "documentationUrl": "https://heano.io/craft-plugins/basin/docs/",
+    "changelogUrl": "https://raw.githubusercontent.com/heanohq/craft-basin/main/CHANGELOG.md",
     "class": "heano\\basin\\Plugin"
   },
   "scripts": {
