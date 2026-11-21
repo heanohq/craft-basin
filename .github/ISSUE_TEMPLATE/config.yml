@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://heano.io/craft-plugins/basin/docs/
+    about: Setup, templating, spam protection and troubleshooting.
+  - name: Problems with Basin itself
+    url: https://usebasin.com
+    about: For your Basin account, billing, or forms outside Craft, contact Basin.

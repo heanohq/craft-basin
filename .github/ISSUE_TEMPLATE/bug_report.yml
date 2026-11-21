@@ -1,0 +1,53 @@
+name: Bug report
+description: Something in the plugin isn't working as the docs say it should.
+labels: [bug report]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting this. Please don't include your Basin API key, form submissions or anyone's personal details.
+        Security issues go through the **Security** tab instead, so they stay private.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to Basin → Forms
+        2. Click …
+        3. See …
+    validations:
+      required: true
+  - type: textarea
+    id: errors
+    attributes:
+      label: Errors
+      description: Any error messages, and related lines from `storage/logs/web.log` or the Basin error log.
+      render: text
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: craft-version
+    attributes:
+      label: Craft version
+      placeholder: "5.5.0"
+    validations:
+      required: true
+  - type: input
+    id: php-version
+    attributes:
+      label: PHP version
+      placeholder: "8.3"
+    validations:
+      required: true

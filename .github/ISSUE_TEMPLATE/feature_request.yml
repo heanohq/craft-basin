@@ -1,0 +1,11 @@
+name: Feature request
+description: Suggest something the plugin could do.
+labels: [feature request]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like the plugin to do?
+      description: What you're trying to achieve, and why the plugin can't do it now.
+    validations:
+      required: true
