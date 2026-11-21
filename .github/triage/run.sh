@@ -24,5 +24,6 @@ claude -p "$(cat "$dir/prompt.md")" \
   --json-schema "$(cat "$dir/schema.json")" \
   > .triage/result.json || true
 
-jq '{is_error, subtype, num_turns, duration_ms, denied: [.permission_denials[]?.tool_name]}' .triage/result.json
+jq '{is_error, subtype, num_turns, duration_ms, api_error_status, denied: [.permission_denials[]?.tool_name]}
+  + (if .is_error and (.structured_output == null) and (.num_turns <= 1) then {error: (.result // "" | .[0:300])} else {} end)' .triage/result.json
 jq -e '.structured_output // empty' .triage/result.json > .triage/proposal.json
