@@ -28,7 +28,7 @@
 
     {{ forms.textField({
         label: 'Notification email'|t('basin'),
-        instructions: 'Who Basin emails when someone submits the form. Separate addresses with commas. If you leave it blank, notifications go to the Basin account owner. Basin emails new addresses asking them to verify, and they get nothing until they do.'|t('basin'),
+        instructions: 'Who Basin emails when someone submits the form. Separate addresses with commas. If you leave it blank, notifications go to the Basin account owner. Basin emails new addresses asking them to verify, and they get nothing until they do. Addresses already verified on another of your Basin forms don’t need verifying again.'|t('basin'),
         id: 'basin-notification-emails',
         name: 'fields[notification_emails]',
         value: values.notification_emails ?? '',

@@ -69,7 +69,7 @@
 
         {# Notifications #}
         <h2>{{ 'Notifications'|t('basin') }}</h2>
-        <p class="light">{{ 'Basin emails new addresses asking them to verify, and they get no notifications until they do. The Basin account owner’s address doesn’t need verifying.'|t('basin') }}</p>
+        <p class="light">{{ 'Basin emails new addresses asking them to verify, and they get no notifications until they do. Addresses already verified on another of your Basin forms, and the Basin account owner’s, don’t need verifying.'|t('basin') }}</p>
 
         {# Recipients are listed as chips, verified and pending together, as in Basin. The
            hidden input holds the list that's saved; addresses left out are dropped. #}
@@ -479,10 +479,10 @@
                     return;
                 }
                 const message = !live.length
-                    ? {{ 'Basin will email the new addresses to verify them. Until one is verified, this form won’t email anyone, not even the Basin account owner. Save anyway?'|t('basin')|json_encode|raw }}
+                    ? {{ 'Basin will email the new addresses to verify them, unless they’re already verified on another of your Basin forms. Until one is verified, this form won’t email anyone, not even the Basin account owner. Save anyway?'|t('basin')|json_encode|raw }}
                     : !current.some((email) => live.includes(email))
-                        ? {{ 'Basin will email the new addresses to verify them. Until one is verified, this form won’t email anyone. Save anyway?'|t('basin')|json_encode|raw }}
-                        : {{ 'Basin will email any new addresses to verify them. Until they’re verified, they won’t receive notifications. Save anyway?'|t('basin')|json_encode|raw }};
+                        ? {{ 'Basin will email the new addresses to verify them, unless they’re already verified on another of your Basin forms. Until one is verified, this form won’t email anyone. Save anyway?'|t('basin')|json_encode|raw }}
+                        : {{ 'Basin will email any new addresses to verify them, unless they’re already verified on another of your Basin forms. Until they’re verified, they won’t receive notifications. Save anyway?'|t('basin')|json_encode|raw }};
                 if (!confirm(message)) {
                     stop();
                 }
