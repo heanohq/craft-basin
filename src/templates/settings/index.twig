@@ -43,7 +43,7 @@
 
     {{ forms.autosuggestField({
         label: 'Account API key'|t('basin'),
-        instructions: 'An environment variable holding your Basin **Account** API key, e.g. `$BASIN_API_KEY`. Create one under Account → API in Basin, then add it to your `.env` file. The key itself is never stored in project config.'|t('basin'),
+        instructions: 'An environment variable holding your Basin **Account** API key, e.g. `$BASIN_API_KEY`. Create one under Account → API in Basin (this needs Basin’s Growth plan or higher), then add it to your `.env` file. The key itself is never stored in project config.'|t('basin'),
         id: 'basin-apiKey',
         name: 'settings[apiKey]',
         value: _self.value('apiKey', settings, overrides, plugin),

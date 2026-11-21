@@ -35,7 +35,7 @@ Write the form however you like:
 
 - Craft CMS 5.0 or later
 - PHP 8.2 or later
-- A [Basin](https://usebasin.com) account with an Account API key
+- A [Basin](https://usebasin.com) account on the **Growth plan or higher**, which Basin needs for Account API keys
 
 ## Installation
 
@@ -48,7 +48,7 @@ php craft plugin/install basin
 
 ## Setup
 
-1. In Basin, go to **Account → API** and create an **Account API key**.
+1. In Basin, go to **Account → API** and create an **Account API key**. Account API keys need Basin's [Growth plan or higher](https://usebasin.com/pricing).
 2. Add it to your `.env` file:
    ```bash
    BASIN_API_KEY="your-account-api-key"
