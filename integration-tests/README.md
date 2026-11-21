@@ -28,4 +28,28 @@ ddev exec -d /var/www/craft-basin/integration-tests vendor/bin/pest
 
 The first run installs Craft (Pro) and the plugin. Each test runs in a transaction that's rolled back, with fresh plugin services and a fresh FakeBasin. Elsewhere, set `CRAFT_DB_SERVER`, `CRAFT_DB_USER` and `CRAFT_DB_PASSWORD`.
 
+## Test suites
+
+- **Integration** (`tests/Feature`, the default): the plugin's PHP and pages. Front-end test pages are in `templates/basin-test`. `HarnessTest` checks the test tools themselves.
+- **Uninstall** (`tests/Uninstall`): uninstalls and reinstalls the plugin. Dropping tables ends the test transaction, so it runs on its own and leaves the plugin installed:
+
+  ```bash
+  ddev exec -d /var/www/craft-basin/integration-tests vendor/bin/pest --testsuite=Uninstall
+  ```
+
+- **Browser** (`tests/Browser`): the JavaScript, in Chromium, through Pest's browser plugin. Test pages block the CAPTCHA providers' scripts with a Content Security Policy, and the tests stand in for the providers, so nothing outside the test reaches the network. The plugin needs Pest 4 (PHP 8.3 or later), which `composer.json` doesn't require because the other suites also run on PHP 8.2. To run them:
+
+  ```bash
+  ddev exec -d /var/www/craft-basin/integration-tests 'composer require --dev -W "pestphp/pest:^4.0" "pestphp/pest-plugin-browser:^4.0"'
+  ddev exec -d /var/www/craft-basin/integration-tests 'npm install --no-save --no-package-lock playwright@1.59.1 && npx playwright install chromium'
+  ddev exec 'sudo npx --prefix /var/www/craft-basin/integration-tests playwright install-deps chromium'
+  ddev exec -d /var/www/craft-basin/integration-tests vendor/bin/pest --testsuite=Browser
+  ```
+
+  Don't commit the `composer.json` change. Chromium's system libraries go when DDEV restarts.
+
+## Fixes to craft-pest
+
+`support/TestableResponse.php` replaces craft-pest's test response, which otherwise checks assertions against the wrong page after a second request, renders a second Control Panel page empty, and never fires the events Yii fires when sending a response (the plugin adds spam protection in one).
+
 Keep these out of the plugin's own `composer.json`: craft-pest boots Craft whenever Pest runs, which would make the unit tests need a database.

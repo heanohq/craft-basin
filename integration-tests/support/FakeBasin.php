@@ -2,14 +2,18 @@
 
 namespace heano\basin\tests\craft;
 
+use GuzzleHttp\Promise\Create;
+use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7\Response;
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
 /**
- * Stands in for Basin's Account API in integration tests. The plugin's Api
- * service sends every request here instead of over the network.
+ * Stands in for Basin in integration tests: its Account API, Form Studio
+ * scripts and attachment downloads. config/guzzle.php makes every Guzzle
+ * client Craft creates send its requests to the current FakeBasin
+ * ({@see handler()}), so nothing in a test reaches the network.
  *
  * It starts with the data in tests/fixtures (project 1002 "Alpha", its two
  * forms, and four submissions to the first), applies changes the plugin
@@ -23,6 +27,15 @@ use Psr\Http\Message\ResponseInterface;
 class FakeBasin implements ClientInterface
 {
     public const KEY = 'fake-basin-key';
+    public const PER_PAGE = 100;
+
+    /** The instance requests go to. Set before each test. */
+    public static ?self $current = null;
+
+    /** @var array<string, true> Published Form Studio scripts, keyed by "uuid-hostedId" */
+    public array $studioScripts = [];
+    /** @var array<int, string> Attachment contents, by attachment ID */
+    public array $attachmentContents = [];
 
     /** @var array<int, array<string, mixed>> */
     public array $projects = [];
@@ -116,6 +129,59 @@ class FakeBasin implements ClientInterface
         return $this->submissions[$id] = $submission;
     }
 
+    /**
+     * Adds `$count` inbox submissions to a form, e.g. to test paging and
+     * queued jobs.
+     *
+     * @return list<int> Their IDs
+     */
+    public function addSubmissions(int $formId, int $count, array $fields = []): array
+    {
+        $ids = [];
+        for ($i = 0; $i < $count; $i++) {
+            $ids[] = $this->addSubmission($formId, $fields)['id'];
+        }
+        return $ids;
+    }
+
+    /**
+     * Gives a submission an attachment.
+     *
+     * @return int The attachment's ID
+     */
+    public function addAttachment(int $submissionId, string $name, string $contents, string $contentType = 'application/pdf'): int
+    {
+        $id = $this->nextId++;
+        $this->submissions[$submissionId]['attachments'][] = [
+            'id' => $id,
+            'name' => $name,
+            'file_size' => strlen($contents),
+            'content_type' => $contentType,
+        ];
+        $this->attachmentContents[$id] = $contents;
+        return $id;
+    }
+
+    /** Publishes a Form Studio version of a form, so its embed script loads. */
+    public function publishStudioForm(string $uuid, string $hostedId): static
+    {
+        $this->studioScripts["$uuid-$hostedId"] = true;
+        return $this;
+    }
+
+    /**
+     * A Guzzle handler that sends each request to {@see $current}. Requests
+     * with no current FakeBasin get a 599, so they can never reach the network.
+     */
+    public static function handler(): callable
+    {
+        return static function(RequestInterface $request, array $options): PromiseInterface {
+            $response = self::$current?->sendRequest($request)
+                ?? new Response(599, [], 'No FakeBasin is set up for this request.');
+            return Create::promiseFor($response);
+        };
+    }
+
     // Form presets, using Basin's field names. Combine them with `+`.
 
     public static function recaptcha(): array
@@ -194,15 +260,28 @@ class FakeBasin implements ClientInterface
     public function sendRequest(RequestInterface $request): ResponseInterface
     {
         $uri = $request->getUri();
+        $host = $uri->getHost();
+        $method = $request->getMethod();
+
+        if ($host === 'hf.usebasin.com') {
+            $this->requests[] = ['method' => $method, 'path' => $uri->getPath(), 'query' => [], 'body' => null, 'host' => $host];
+            return preg_match('#^/hf/([a-z0-9]+-[a-z0-9]+)\.js$#i', $uri->getPath(), $m) && isset($this->studioScripts[strtolower($m[1])])
+                ? new Response(200, ['Content-Type' => 'application/javascript'], '/* Form Studio */')
+                : new Response(404);
+        }
+        if ($host !== 'usebasin.com' || !str_starts_with($uri->getPath(), '/api/v1/')) {
+            $this->unhandled[] = "$method $uri";
+            return $this->json(501, ['error' => "FakeBasin doesn't handle $method $uri"]);
+        }
+
         $path = preg_replace('#^/api/v1/#', '', $uri->getPath());
         parse_str($uri->getQuery(), $query);
         $raw = (string)$request->getBody();
         $body = $raw === '' ? null : json_decode($raw, true);
-        $method = $request->getMethod();
 
-        $this->requests[] = compact('method', 'path', 'query', 'body');
+        $this->requests[] = compact('method', 'path', 'query', 'body', 'host');
 
-        if ($uri->getHost() !== 'usebasin.com' || $request->getHeaderLine('Authorization') !== 'Token ' . self::KEY) {
+        if ($request->getHeaderLine('Authorization') !== 'Token ' . self::KEY) {
             return $this->json(401, ['error' => 'Invalid API key']);
         }
 
@@ -224,13 +303,13 @@ class FakeBasin implements ClientInterface
         $id = preg_match('#/(\d+)(?:/|$)#', $path, $m) ? (int)$m[1] : null;
 
         return match (true) {
-            $method === 'GET' && $path === 'projects' => $this->list('projects', array_values($this->projects)),
+            $method === 'GET' && $path === 'projects' => $this->list('projects', array_values($this->projects), $query),
             $method === 'GET' && preg_match('#^projects/\d+$#', $path) => $this->one($this->projects[$id] ?? null),
 
             $method === 'GET' && $path === 'forms' => $this->list('forms', array_values(array_filter(
                 $this->forms,
                 fn($f) => !isset($query['project_id']) || $f['project_id'] === (int)$query['project_id'],
-            ))),
+            )), $query),
             $method === 'GET' && preg_match('#^forms/\d+$#', $path) => $this->one(
                 isset($this->forms[$id]) ? $this->withCounts($this->forms[$id]) : null,
             ),
@@ -246,15 +325,21 @@ class FakeBasin implements ClientInterface
                 ? $this->json(200, ['success' => true])
                 : $this->notFound(),
 
+            $method === 'GET' && preg_match('#^attachments/\d+$#', $path) => isset($this->attachmentContents[$id])
+                ? new Response(200, ['Content-Type' => 'application/octet-stream'], $this->attachmentContents[$id])
+                : $this->notFound(),
+
             default => null,
         };
     }
 
-    private function list(string $key, array $items, array $meta = []): ResponseInterface
+    /** One page of a list, as Basin sends it: 100 a page, `page` echoed as a string. */
+    private function list(string $key, array $items, array $query, array $meta = []): ResponseInterface
     {
+        $page = max(1, (int)($query['page'] ?? 1));
         return $this->json(200, [
-            $key => $items,
-            'meta' => $meta + ['count' => count($items), 'page' => 1, 'per_page' => 100],
+            $key => array_slice(array_values($items), ($page - 1) * self::PER_PAGE, self::PER_PAGE),
+            'meta' => $meta + ['count' => count($items), 'page' => (string)$page, 'per_page' => self::PER_PAGE],
         ]);
     }
 
@@ -295,7 +380,7 @@ class FakeBasin implements ClientInterface
         }
         usort($items, fn($a, $b) => strcmp($b['created_at'], $a['created_at']));
 
-        return $this->list('submissions', $items, [
+        return $this->list('submissions', $items, $query, [
             'inbox_count' => count(array_filter($all, fn($s) => !$s['spam'] && !$s['trash'])),
             'spam_count' => count(array_filter($all, fn($s) => $s['spam'] && !$s['trash'])),
             'trash_count' => count(array_filter($all, fn($s) => $s['trash'])),

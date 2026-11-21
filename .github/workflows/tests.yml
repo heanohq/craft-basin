@@ -116,6 +116,60 @@ jobs:
       - name: Run integration tests
         run: vendor/bin/pest
 
+      - name: Run uninstall tests
+        run: vendor/bin/pest --testsuite=Uninstall
+
+  browser:
+    name: Browser (PHP 8.5)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: basin_tests
+          MYSQL_USER: db
+          MYSQL_PASSWORD: db
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      CRAFT_DB_SERVER: 127.0.0.1
+      CRAFT_DB_PORT: 3306
+      CRAFT_DB_USER: db
+      CRAFT_DB_PASSWORD: db
+    defaults:
+      run:
+        working-directory: integration-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+          tools: composer:v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Pest's browser plugin needs Pest 4 (PHP 8.3+), so it's added here
+      # rather than in composer.json, which also has to work on PHP 8.2.
+      - name: Install dependencies with Pest's browser plugin
+        run: composer require --dev --no-interaction --with-all-dependencies "pestphp/pest:^4.0" "pestphp/pest-plugin-browser:^4.0"
+
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --no-save --no-package-lock playwright@1.59.1
+          npx playwright install --with-deps chromium
+
+      - name: Run browser tests
+        run: vendor/bin/pest --testsuite=Browser
+
   audit:
     name: Security audit
     runs-on: ubuntu-latest
@@ -137,7 +191,7 @@ jobs:
 
   report:
     name: Report a failed daily run
-    needs: [tests, integration, audit]
+    needs: [tests, integration, browser, audit]
     if: failure() && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     permissions:

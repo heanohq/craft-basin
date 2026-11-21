@@ -1,0 +1,9 @@
+{# Test pages for SiteProtectionTest. The form's Basin ID comes from ?uuid=. #}
+{% set uuid = craft.app.request.getQueryParam('uuid') %}
+<!DOCTYPE html>
+<html lang="en">
+<head><title>Test page</title>{% block head %}{% endblock %}</head>
+<body>
+{% block body %}{% endblock %}
+</body>
+</html>

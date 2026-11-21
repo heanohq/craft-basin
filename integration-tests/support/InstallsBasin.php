@@ -56,6 +56,9 @@ class InstallsBasin implements HandlesArguments
                 Craft::$app->set('view', \craft\helpers\App::viewConfig());
             }
 
+            // Each test response keeps its own assertions (see TestableResponse).
+            Craft::$container->set(\markhuot\craftpest\web\TestableResponse::class, TestableResponse::class);
+
             // Craft boots here as a site request, so the plugin skipped its CP
             // routes (it registers them only on CP requests). Register them
             // now; craft-pest rebuilds the URL manager for each test request,

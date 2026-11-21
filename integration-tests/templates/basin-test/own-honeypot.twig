@@ -1,0 +1,6 @@
+{% extends 'basin-test/_layout' %}
+{% block body %}
+<form action="https://usebasin.com/f/{{ uuid }}" method="post">
+  <input type="text" name="_gotcha" class="my-honeypot">
+</form>
+{% endblock %}

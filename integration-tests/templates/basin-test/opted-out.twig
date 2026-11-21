@@ -1,0 +1,6 @@
+{% extends 'basin-test/_layout' %}
+{% block body %}
+<form action="https://usebasin.com/f/{{ uuid }}" method="post" data-basin-protect="false">
+  <input type="email" name="email">
+</form>
+{% endblock %}

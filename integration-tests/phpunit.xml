@@ -3,10 +3,19 @@
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
          bootstrap="vendor/autoload.php"
          colors="true"
-         cacheDirectory=".phpunit.cache">
+         cacheDirectory=".phpunit.cache"
+         defaultTestSuite="Integration">
     <testsuites>
         <testsuite name="Integration">
-            <directory suffix="Test.php">tests</directory>
+            <directory suffix="Test.php">tests/Feature</directory>
+        </testsuite>
+        <!-- Run on its own, outside a transaction. See tests/Uninstall. -->
+        <!-- Needs Pest 4's browser plugin and Playwright. See README. -->
+        <testsuite name="Browser">
+            <directory suffix="Test.php">tests/Browser</directory>
+        </testsuite>
+        <testsuite name="Uninstall">
+            <directory suffix="Test.php">tests/Uninstall</directory>
         </testsuite>
     </testsuites>
     <php>

@@ -5,3 +5,7 @@
 /.phpunit.cache/
 composer.lock
 /config/license.key
+/node_modules/
+/package.json
+/package-lock.json
+/tests/Browser/Screenshots/

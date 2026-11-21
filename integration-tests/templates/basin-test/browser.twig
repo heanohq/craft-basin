@@ -1,0 +1,18 @@
+{% extends 'basin-test/_layout' %}
+{# The CSP stops the browser loading the CAPTCHA providers' scripts, so
+   browser tests never reach them; the tests stand in for the providers. #}
+{% block head %}<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'">{% endblock %}
+{% block body %}
+<form id="contact" action="https://usebasin.com/f/{{ uuid }}" method="post">
+  <input type="email" name="email" value="person@example.com">
+  <button type="submit">Send</button>
+</form>
+<script>
+  // Added after the page has loaded, as a JavaScript-rendered form would be.
+  if (location.search.includes('late=1')) {
+    setTimeout(() => {
+      document.body.insertAdjacentHTML('beforeend', '<form id="late" action="https://usebasin.com/f/{{ uuid }}" method="post"><button>Send</button></form>');
+    }, 200);
+  }
+</script>
+{% endblock %}

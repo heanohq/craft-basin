@@ -1,0 +1,5 @@
+{% extends 'basin-test/_layout' %}
+{% block head %}<script nonce="test-nonce-123">window.pageScript = true;</script>{% endblock %}
+{% block body %}
+<form action="https://usebasin.com/f/{{ uuid }}" method="post"></form>
+{% endblock %}
