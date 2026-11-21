@@ -7,6 +7,11 @@
 set -euo pipefail
 
 dir=$(dirname "$0")
+# setup-token prints the token across lines, so a pasted secret can carry
+# a line break, which isn't allowed in a header.
+CLAUDE_CODE_OAUTH_TOKEN=$(tr -d '[:space:]' <<< "${CLAUDE_CODE_OAUTH_TOKEN:-}")
+export CLAUDE_CODE_OAUTH_TOKEN
+
 model=${TRIAGE_MODEL:-sonnet}
 model=$(tr '[:upper:]' '[:lower:]' <<< "$model")
 
