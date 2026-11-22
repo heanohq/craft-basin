@@ -212,7 +212,9 @@ jobs:
         run: composer require --dev --no-interaction --with-all-dependencies "putyourlightson/craft-blitz:^5.0"
 
       - name: Show Craft and Blitz versions
-        run: composer show craftcms/cms putyourlightson/craft-blitz | grep -E '^(name|versions)'
+        run: |
+          composer show craftcms/cms | grep -E '^versions'
+          composer show putyourlightson/craft-blitz | grep -E '^versions'
 
       - name: Run Blitz tests
         run: vendor/bin/pest --testsuite=Blitz
