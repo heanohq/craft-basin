@@ -22,6 +22,10 @@
         <testsuite name="Providers">
             <directory suffix="Test.php">tests/Providers</directory>
         </testsuite>
+        <!-- Needs Blitz, which needs a newer Craft than the oldest supported. See README. -->
+        <testsuite name="Blitz">
+            <directory suffix="Test.php">tests/Blitz</directory>
+        </testsuite>
         <!-- Run on its own, outside a transaction. See tests/Uninstall. -->
         <testsuite name="Uninstall">
             <directory suffix="Test.php">tests/Uninstall</directory>

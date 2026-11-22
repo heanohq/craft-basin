@@ -48,6 +48,15 @@ The first run installs Craft (Pro) and the plugin. Each test runs in a transacti
 
   Don't commit the `composer.json` change. Chromium's system libraries go when DDEV restarts.
 
+- **Blitz** (`tests/Blitz`): pages cached by [Blitz](https://putyourlightson.com/plugins/blitz) keep their spam protection, including the static file a server can send without running PHP. Blitz needs Craft 5.6 or later, newer than the oldest Craft the plugin supports, so `composer.json` doesn't require it. `InstallsBasin` installs it when it's there. To run them:
+
+  ```bash
+  ddev exec -d /var/www/craft-basin/integration-tests 'composer require --dev -W "putyourlightson/craft-blitz:^5.0"'
+  ddev exec -d /var/www/craft-basin/integration-tests vendor/bin/pest --testsuite=Blitz
+  ```
+
+  Don't commit the `composer.json` change.
+
 - **Docs** (`tests/Docs`): the user docs against the plugin, so neither can drift from the other. It checks the config keys, settings, permissions, Twig API, GraphQL types and example queries, renders every Twig example, and checks that bold text naming the Control Panel matches a real label in the plugin or Craft. Bold text that isn't (Basin's own UI, other products, emphasis) is listed in `tests/Docs/not-plugin-labels.txt`. The docs are in heano's site repo, so copy them in first (`.docs` is ignored by git), or point `DOCS_DIR` at them:
 
   ```bash

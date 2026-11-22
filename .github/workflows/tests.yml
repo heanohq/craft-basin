@@ -171,6 +171,52 @@ jobs:
       - name: Run browser tests
         run: vendor/bin/pest --testsuite=Browser
 
+  blitz:
+    name: Blitz static caching (PHP 8.5)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: basin_tests
+          MYSQL_USER: db
+          MYSQL_PASSWORD: db
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    env:
+      CRAFT_DB_SERVER: 127.0.0.1
+      CRAFT_DB_PORT: 3306
+      CRAFT_DB_USER: db
+      CRAFT_DB_PASSWORD: db
+    defaults:
+      run:
+        working-directory: integration-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+          tools: composer:v2
+
+      # Blitz needs a newer Craft than the oldest the plugin supports, so it's
+      # added here rather than in composer.json. The newest Blitz every day,
+      # so a release that changes the event the plugin uses is caught.
+      - name: Install dependencies with Blitz
+        run: composer require --dev --no-interaction --with-all-dependencies "putyourlightson/craft-blitz:^5.0"
+
+      - name: Show Craft and Blitz versions
+        run: composer show craftcms/cms putyourlightson/craft-blitz | grep -E '^(name|versions)'
+
+      - name: Run Blitz tests
+        run: vendor/bin/pest --testsuite=Blitz
+
   docs:
     name: Docs and CAPTCHA providers
     # The docs are in heano's private site repo, which a fork's pull request
@@ -275,7 +321,7 @@ jobs:
 
   report:
     name: Report a failed daily run
-    needs: [tests, integration, browser, docs, audit]
+    needs: [tests, integration, browser, blitz, docs, audit]
     if: failure() && github.event_name == 'schedule'
     runs-on: ubuntu-latest
     permissions:

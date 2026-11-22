@@ -29,7 +29,7 @@ uses(TestCase::class, RefreshesDatabase::class)
         FakeBasin::$current = null;
         expect($this->basin->unhandled)->toBe([], 'Requests FakeBasin doesn’t handle were made');
     })
-    ->in('Feature', 'Browser', 'Providers', 'Docs');
+    ->in('Feature', 'Browser', 'Providers', 'Docs', 'Blitz');
 
 // Uninstalling drops tables, which ends the transaction RefreshesDatabase
 // relies on, so those tests run on their own (phpunit.xml, Uninstall suite).

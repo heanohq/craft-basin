@@ -58,6 +58,14 @@ class InstallsBasin implements HandlesArguments
                 Craft::$app->set('view', \craft\helpers\App::viewConfig());
             }
 
+            // Blitz, for the Blitz suite, when it's been added (see README).
+            // It's only in the Blitz job, since it needs a newer Craft than
+            // the oldest the plugin supports.
+            if (class_exists(\putyourlightson\blitz\Blitz::class) && !$plugins->isPluginInstalled('blitz')) {
+                $plugins->installPlugin('blitz');
+                Craft::$app->getProjectConfig()->saveModifiedConfigData();
+            }
+
             // Each test response keeps its own assertions (see TestableResponse).
             Craft::$container->set(\markhuot\craftpest\web\TestableResponse::class, TestableResponse::class);
 
