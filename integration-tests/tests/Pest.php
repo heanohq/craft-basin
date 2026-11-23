@@ -50,6 +50,25 @@ function newRequest(): void
     }
 }
 
+/**
+ * For browser tests of Control Panel pages: publishes the CP's scripts and
+ * styles to this project's web/ folder, where the test browser's server looks
+ * for files, and gives Craft a fresh view. The view remembers which asset
+ * bundles it has registered, so without a fresh one, every CP page after the
+ * first in a run loads without the CP's JavaScript and CSS.
+ */
+function useCpAssets(): void
+{
+    Craft::setAlias('@webroot', dirname(__DIR__) . '/web');
+    Craft::$app->set('view', Craft::$app->getComponents()['view']);
+    $assets = Craft::$app->getAssetManager();
+    $assets->basePath = Craft::getAlias('@webroot/cpresources');
+    $assets->baseUrl = '/cpresources';
+    if (!is_dir($assets->basePath)) {
+        mkdir($assets->basePath, 0777, true);
+    }
+}
+
 /** Changes plugin settings for the current test only. */
 function settings(array $values): void
 {
