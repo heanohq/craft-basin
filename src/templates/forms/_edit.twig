@@ -65,6 +65,14 @@
             errors: errors.timezone ?? null,
         }) }}
 
+        {{ forms.lightswitchField({
+            label: 'Always respond with JSON'|t('basin'),
+            instructions: 'Basin’s “Enable AJAX”. Only turn this on if every page submits this form with JavaScript: otherwise visitors see raw JSON instead of the thank-you page or redirect.'|t('basin'),
+            id: 'basin-use-ajax',
+            name: 'fields[use_ajax]',
+            on: values.use_ajax,
+        }) }}
+
         <hr>
 
         {# Notifications #}
@@ -155,12 +163,13 @@
 
         <hr>
 
-        {# After submitting #}
-        <h2>{{ 'After submitting'|t('basin') }}</h2>
+        {# Redirect URL. The heading is the field's label. #}
+        <h2 id="basin-redirect-url-heading">{{ 'Redirect URL'|t('basin') }}</h2>
+        <p class="light" id="basin-redirect-url-about">{{ 'Where visitors go after submitting. Leave blank to show Basin’s thank-you page.'|t('basin') }}</p>
 
         {{ forms.textField({
-            label: 'Redirect URL'|t('basin'),
-            instructions: 'Where visitors go after submitting. Leave blank to show Basin’s thank-you page.'|t('basin'),
+            labelledBy: 'basin-redirect-url-heading',
+            inputAttributes: { aria: { describedby: 'basin-redirect-url-about' } },
             id: 'basin-redirect-url',
             name: 'fields[redirect_url]',
             value: values.redirect_url,
@@ -169,63 +178,61 @@
             errors: errors.redirect_url ?? null,
         }) }}
 
-        <div class="field">
-            <div class="heading"><label>{{ 'Thank-you page'|t('basin') }}</label></div>
-            <div class="instructions"><p>{{ 'Shown when there’s no redirect URL. Leave a field blank for Basin’s default.'|t('basin') }}</p></div>
-        </div>
+        {# Basin only shows its thank-you page when there's no redirect URL, so these
+           fields are hidden while one is set. They're still posted, unchanged. #}
+        {% set thankYouErrors = (errors ?? {})|keys|filter(k => k starts with 'redirect_' and k != 'redirect_url') %}
+        {% set hideThankYou = values.redirect_url and thankYouErrors is empty %}
+        <hr class="basin-thank-you {{ hideThankYou ? 'hidden' }}">
 
-        {{ forms.textField({
-            label: 'Heading'|t('basin'),
-            id: 'basin-redirect-heading',
-            name: 'fields[redirect_heading]',
-            value: values.redirect_heading,
-            placeholder: 'Thanks for the message!'|t('basin'),
-            errors: errors.redirect_heading ?? null,
-        }) }}
+        <div id="basin-thank-you-fields" class="basin-thank-you {{ hideThankYou ? 'hidden' }}">
+            <h2>{{ 'Thank-you page'|t('basin') }}</h2>
+            <p class="light">{{ 'If there’s no redirect URL, Basin shows visitors its own thank-you page. These settings change what it says. Leave any of them blank to use Basin’s default.'|t('basin') }}</p>
 
-        {{ forms.textareaField({
-            label: 'Message'|t('basin'),
-            id: 'basin-redirect-message',
-            name: 'fields[redirect_message]',
-            value: values.redirect_message,
-            rows: 2,
-            placeholder: 'Your submission was successful'|t('basin'),
-            errors: errors.redirect_message ?? null,
-        }) }}
-
-        {{ forms.textField({
-            label: 'Button text'|t('basin'),
-            id: 'basin-redirect-button-text',
-            name: 'fields[redirect_button_text]',
-            value: values.redirect_button_text,
-            placeholder: 'Back to home'|t('basin'),
-            errors: errors.redirect_button_text ?? null,
-        }) }}
-
-        <div class="flex" style="align-items: flex-start; gap: var(--xl);">
-            {{ forms.colorField({
-                label: 'Button colour'|t('basin'),
-                id: 'basin-redirect-button-bg',
-                name: 'fields[redirect_button_background_color]',
-                value: values.redirect_button_background_color,
-                errors: errors.redirect_button_background_color ?? null,
+            {{ forms.textField({
+                label: 'Heading'|t('basin'),
+                id: 'basin-redirect-heading',
+                name: 'fields[redirect_heading]',
+                value: values.redirect_heading,
+                placeholder: 'Thanks for the message!'|t('basin'),
+                errors: errors.redirect_heading ?? null,
             }) }}
-            {{ forms.colorField({
-                label: 'Button text colour'|t('basin'),
-                id: 'basin-redirect-button-color',
-                name: 'fields[redirect_button_text_color]',
-                value: values.redirect_button_text_color,
-                errors: errors.redirect_button_text_color ?? null,
-            }) }}
-        </div>
 
-        {{ forms.lightswitchField({
-            label: 'Always respond with JSON'|t('basin'),
-            instructions: 'Basin’s “Enable AJAX”. Only turn this on if every page submits this form with JavaScript: otherwise visitors see raw JSON instead of the thank-you page or redirect.'|t('basin'),
-            id: 'basin-use-ajax',
-            name: 'fields[use_ajax]',
-            on: values.use_ajax,
-        }) }}
+            {{ forms.textareaField({
+                label: 'Message'|t('basin'),
+                id: 'basin-redirect-message',
+                name: 'fields[redirect_message]',
+                value: values.redirect_message,
+                rows: 2,
+                placeholder: 'Your submission was successful'|t('basin'),
+                errors: errors.redirect_message ?? null,
+            }) }}
+
+            {{ forms.textField({
+                label: 'Button text'|t('basin'),
+                id: 'basin-redirect-button-text',
+                name: 'fields[redirect_button_text]',
+                value: values.redirect_button_text,
+                placeholder: 'Back to home'|t('basin'),
+                errors: errors.redirect_button_text ?? null,
+            }) }}
+
+            <div class="flex" style="align-items: flex-start; gap: var(--xl);">
+                {{ forms.colorField({
+                    label: 'Button colour'|t('basin'),
+                    id: 'basin-redirect-button-bg',
+                    name: 'fields[redirect_button_background_color]',
+                    value: values.redirect_button_background_color,
+                    errors: errors.redirect_button_background_color ?? null,
+                }) }}
+                {{ forms.colorField({
+                    label: 'Button text colour'|t('basin'),
+                    id: 'basin-redirect-button-color',
+                    name: 'fields[redirect_button_text_color]',
+                    value: values.redirect_button_text_color,
+                    errors: errors.redirect_button_text_color ?? null,
+                }) }}
+            </div>
+        </div>
 
         <hr>
 
@@ -397,6 +404,16 @@
 {% if loadError is null %}
     {% js %}
         (() => {
+            // The thank-you page settings only apply when there's no redirect URL.
+            const redirectUrl = document.getElementById('basin-redirect-url');
+            if (redirectUrl) {
+                redirectUrl.addEventListener('input', () => {
+                    for (const el of document.querySelectorAll('.basin-thank-you')) {
+                        el.classList.toggle('hidden', redirectUrl.value.trim() !== '');
+                    }
+                });
+            }
+
             // Recipients: type an address and press Enter (or a comma) to add it as a chip.
             const split = (v) => (v || '').split(/[\s,;]+/).filter(Boolean);
             const isEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);

@@ -1,5 +1,10 @@
 # Release Notes for Basin
 
+## Unreleased
+
+### Changed
+- On a form's settings page, “After submitting” is now two sections, “Redirect URL” and “Thank-you page”, and the thank-you page settings explain what they change. They're hidden while the form has a redirect URL, since Basin only shows its thank-you page when there isn't one. “Always respond with JSON” has moved to “General”.
+
 ## 1.0.1 - 2026-11-21
 
 ### Changed
