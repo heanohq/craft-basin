@@ -163,10 +163,19 @@ jobs:
       - name: Install dependencies with Pest's browser plugin
         run: composer require --dev --no-interaction --with-all-dependencies "pestphp/pest:^4.0" "pestphp/pest-plugin-browser:^4.0"
 
+      # Only the headless shell, which is what the tests use. The runner already
+      # has the system libraries it needs, so no --with-deps: installing those
+      # with apt (mostly fonts) took up to 7 minutes on a slow mirror.
+      - name: Cache Playwright's Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-1.59.1-chromium-headless-shell-${{ runner.os }}
+
       - name: Install Playwright and Chromium
         run: |
           npm install --no-save --no-package-lock playwright@1.59.1
-          npx playwright install --with-deps chromium
+          npx playwright install --only-shell chromium
 
       - name: Run browser tests
         run: vendor/bin/pest --testsuite=Browser
@@ -285,10 +294,19 @@ jobs:
       - name: Install dependencies with Pest's browser plugin
         run: composer require --dev --no-interaction --with-all-dependencies "pestphp/pest:^4.0" "pestphp/pest-plugin-browser:^4.0"
 
+      # Only the headless shell, which is what the tests use. The runner already
+      # has the system libraries it needs, so no --with-deps: installing those
+      # with apt (mostly fonts) took up to 7 minutes on a slow mirror.
+      - name: Cache Playwright's Chromium
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-1.59.1-chromium-headless-shell-${{ runner.os }}
+
       - name: Install Playwright and Chromium
         run: |
           npm install --no-save --no-package-lock playwright@1.59.1
-          npx playwright install --with-deps chromium
+          npx playwright install --only-shell chromium
 
       - name: Check the docs against the plugin
         run: vendor/bin/pest --testsuite=Docs
